@@ -1,11 +1,5 @@
 ﻿namespace Ocelot.UnitTests.CacheManager
 {
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Net;
-    using System.Net.Http;
-    using System.Net.Http.Headers;
-    using System.Threading.Tasks;
     using global::CacheManager.Core;
     using Microsoft.AspNetCore.Http;
     using Moq;
@@ -17,12 +11,19 @@
     using Ocelot.Logging;
     using Ocelot.Middleware;
     using Shouldly;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Net;
+    using System.Net.Http;
+    using System.Net.Http.Headers;
+    using System.Threading.Tasks;
     using TestStack.BDDfy;
     using Xunit;
 
     public class OutputCacheMiddlewareRealCacheTests
     {
         private readonly IOcelotCache<CachedResponse> _cacheManager;
+        private readonly ICacheKeyGenerator _cacheKeyGenerator;
         private readonly OutputCacheMiddleware _middleware;
         private readonly DownstreamContext _downstreamContext;
         private OcelotRequestDelegate _next;
@@ -39,10 +40,11 @@
                 x.WithDictionaryHandle();
             });
             _cacheManager = new OcelotCacheManagerCache<CachedResponse>(cacheManagerOutputCache);
+            _cacheKeyGenerator = new CacheKeyGenerator();
             _downstreamContext = new DownstreamContext(new DefaultHttpContext());
             _downstreamContext.DownstreamRequest = new Ocelot.Request.Middleware.DownstreamRequest(new HttpRequestMessage(HttpMethod.Get, "https://some.url/blah?abcd=123"));
             _next = context => Task.CompletedTask;
-            _middleware = new OutputCacheMiddleware(_next, _loggerFactory.Object, _cacheManager);
+            _middleware = new OutputCacheMiddleware(_next, _loggerFactory.Object, _cacheManager, _cacheKeyGenerator);
         }
 
         [Fact]
@@ -50,7 +52,7 @@
         {
             var content = new StringContent("{\"Test\": 1}")
             {
-                Headers = { ContentType = new MediaTypeHeaderValue("application/json")}
+                Headers = { ContentType = new MediaTypeHeaderValue("application/json") }
             };
 
             var response = new DownstreamResponse(content, HttpStatusCode.OK, new List<KeyValuePair<string, IEnumerable<string>>>(), "fooreason");
@@ -69,7 +71,8 @@
 
         private void ThenTheContentTypeHeaderIsCached()
         {
-            var result = _cacheManager.Get("GET-https://some.url/blah?abcd=123", "kanken");
+            string cacheKey = MD5Helper.GenerateMd5("GET-https://some.url/blah?abcd=123");
+            var result = _cacheManager.Get(cacheKey, "kanken");
             var header = result.ContentHeaders["Content-Type"];
             header.First().ShouldBe("application/json");
         }
