@@ -1,10 +1,9 @@
+using System;
+using System.Linq.Expressions;
 using Ocelot.Middleware;
 
 namespace Ocelot.UnitTests.LoadBalancer
 {
-    using System.Collections.Generic;
-    using System.Net.Http;
-    using System.Threading.Tasks;
     using Microsoft.AspNetCore.Http;
     using Moq;
     using Ocelot.Configuration;
@@ -17,6 +16,9 @@ namespace Ocelot.UnitTests.LoadBalancer
     using Ocelot.Responses;
     using Ocelot.Values;
     using Shouldly;
+    using System.Collections.Generic;
+    using System.Net.Http;
+    using System.Threading.Tasks;
     using TestStack.BDDfy;
     using Xunit;
 
@@ -71,7 +73,7 @@ namespace Ocelot.UnitTests.LoadBalancer
 
         [Fact]
         public void should_set_pipeline_error_if_cannot_get_load_balancer()
-        {         
+        {
             var downstreamRoute = new DownstreamReRouteBuilder()
                     .WithUpstreamHttpMethod(new List<string> { "Get" })
                     .Build();
@@ -94,9 +96,9 @@ namespace Ocelot.UnitTests.LoadBalancer
             var downstreamRoute = new DownstreamReRouteBuilder()
                     .WithUpstreamHttpMethod(new List<string> { "Get" })
                     .Build();
-                
-             var serviceProviderConfig = new ServiceProviderConfigurationBuilder()
-                .Build();
+
+            var serviceProviderConfig = new ServiceProviderConfigurationBuilder()
+               .Build();
 
             this.Given(x => x.GivenTheDownStreamUrlIs("http://my.url/abc?q=123"))
                 .And(x => GivenTheConfigurationIs(serviceProviderConfig))
@@ -105,6 +107,26 @@ namespace Ocelot.UnitTests.LoadBalancer
                 .And(x => x.GivenTheLoadBalancerReturnsAnError())
                 .When(x => x.WhenICallTheMiddleware())
                 .Then(x => x.ThenAnErrorStatingHostAndPortCouldNotBeFoundIsSetOnPipeline())
+                .BDDfy();
+        }
+
+        [Fact]
+        public void should_set_scheme()
+        {
+            var downstreamRoute = new DownstreamReRouteBuilder()
+                .WithUpstreamHttpMethod(new List<string> { "Get" })
+                .Build();
+
+            var serviceProviderConfig = new ServiceProviderConfigurationBuilder()
+                .Build();
+
+            this.Given(x => x.GivenTheDownStreamUrlIs("http://my.url/abc?q=123"))
+                .And(x => GivenTheConfigurationIs(serviceProviderConfig))
+                .And(x => x.GivenTheDownStreamRouteIs(downstreamRoute, new List<Ocelot.DownstreamRouteFinder.UrlMatcher.PlaceholderNameAndValue>()))
+                .And(x => x.GivenTheLoadBalancerHouseReturns())
+                .And(x => x.GivenTheLoadBalancerReturnsOk())
+                .When(x => x.WhenICallTheMiddleware())
+                .Then(x => x.ThenAnHostAndPortIsSetOnPipeline())
                 .BDDfy();
         }
 
@@ -117,7 +139,7 @@ namespace Ocelot.UnitTests.LoadBalancer
         private void GivenTheConfigurationIs(ServiceProviderConfiguration config)
         {
             _config = config;
-            var configuration = new InternalConfiguration(null, null, config, null, null, null, null, null);
+            var configuration = new InternalConfiguration(null, null, config, null, null, null, null, null, null);
             _downstreamContext.Configuration = configuration;
         }
 
@@ -130,9 +152,16 @@ namespace Ocelot.UnitTests.LoadBalancer
         private void GivenTheLoadBalancerReturnsAnError()
         {
             _getHostAndPortError = new ErrorResponse<ServiceHostAndPort>(new List<Error>() { new ServicesAreNullError($"services were null for bah") });
-             _loadBalancer
+            _loadBalancer
+               .Setup(x => x.Lease(It.IsAny<DownstreamContext>()))
+               .ReturnsAsync(_getHostAndPortError);
+        }
+
+        private void GivenTheLoadBalancerReturnsOk()
+        {
+            _loadBalancer
                 .Setup(x => x.Lease(It.IsAny<DownstreamContext>()))
-                .ReturnsAsync(_getHostAndPortError);
+                .ReturnsAsync(new OkResponse<ServiceHostAndPort>(new ServiceHostAndPort("abc", 123, "https")));
         }
 
         private void GivenTheLoadBalancerReturns()
@@ -153,7 +182,7 @@ namespace Ocelot.UnitTests.LoadBalancer
         {
             _loadBalancerHouse
                 .Setup(x => x.Get(It.IsAny<DownstreamReRoute>(), It.IsAny<ServiceProviderConfiguration>()))
-                .ReturnsAsync(new OkResponse<ILoadBalancer>(_loadBalancer.Object));
+                .Returns(new OkResponse<ILoadBalancer>(_loadBalancer.Object));
         }
 
         private void GivenTheLoadBalancerHouseReturnsAnError()
@@ -165,7 +194,7 @@ namespace Ocelot.UnitTests.LoadBalancer
 
             _loadBalancerHouse
                 .Setup(x => x.Get(It.IsAny<DownstreamReRoute>(), It.IsAny<ServiceProviderConfiguration>()))
-                .ReturnsAsync(_getLoadBalancerHouseError);
+                .Returns(_getLoadBalancerHouseError);
         }
 
         private void ThenAnErrorStatingLoadBalancerCouldNotBeFoundIsSetOnPipeline()
@@ -184,6 +213,13 @@ namespace Ocelot.UnitTests.LoadBalancer
         {
             _downstreamContext.IsError.ShouldBeTrue();
             _downstreamContext.Errors.ShouldBe(_getHostAndPortError.Errors);
+        }
+
+        private void ThenAnHostAndPortIsSetOnPipeline()
+        {
+            _downstreamContext.DownstreamRequest.Host.ShouldBeEquivalentTo("abc");
+            _downstreamContext.DownstreamRequest.Port.ShouldBeEquivalentTo(123);
+            _downstreamContext.DownstreamRequest.Scheme.ShouldBeEquivalentTo("https");
         }
 
         private void ThenTheDownstreamUrlIsReplacedWith(string expectedUri)

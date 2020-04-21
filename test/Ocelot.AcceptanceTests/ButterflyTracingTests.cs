@@ -1,9 +1,5 @@
 namespace Ocelot.AcceptanceTests
 {
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Net;
     using Butterfly.Client.AspNetCore;
     using Configuration.File;
     using Microsoft.AspNetCore.Builder;
@@ -11,6 +7,10 @@ namespace Ocelot.AcceptanceTests
     using Microsoft.AspNetCore.Http;
     using Rafty.Infrastructure;
     using Shouldly;
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Net;
     using TestStack.BDDfy;
     using Xunit;
     using Xunit.Abstractions;
@@ -35,6 +35,8 @@ namespace Ocelot.AcceptanceTests
         [Fact]
         public void should_forward_tracing_information_from_ocelot_and_downstream_services()
         {
+            int port1 = RandomPortFinder.GetRandomPort();
+            int port2 = RandomPortFinder.GetRandomPort();
             var configuration = new FileConfiguration
             {
                 ReRoutes = new List<FileReRoute>
@@ -48,7 +50,7 @@ namespace Ocelot.AcceptanceTests
                                 new FileHostAndPort
                                 {
                                     Host = "localhost",
-                                    Port = 51887,
+                                    Port = port1,
                                 }
                             },
                             UpstreamPathTemplate = "/api001/values",
@@ -67,7 +69,7 @@ namespace Ocelot.AcceptanceTests
                                 new FileHostAndPort
                                 {
                                     Host = "localhost",
-                                    Port = 51388,
+                                    Port = port2,
                                 }
                             },
                             UpstreamPathTemplate = "/api002/values",
@@ -79,12 +81,13 @@ namespace Ocelot.AcceptanceTests
                         }
                     }
             };
-
-            var butterflyUrl = "http://localhost:9618";
+            
+            var butterflyPort = RandomPortFinder.GetRandomPort();
+            var butterflyUrl = $"http://localhost:{butterflyPort}";
 
             this.Given(x => GivenFakeButterfly(butterflyUrl))
-                .And(x => GivenServiceOneIsRunning("http://localhost:51887", "/api/values", 200, "Hello from Laura", butterflyUrl))
-                .And(x => GivenServiceTwoIsRunning("http://localhost:51388", "/api/values", 200, "Hello from Tom", butterflyUrl))
+                .And(x => GivenServiceOneIsRunning($"http://localhost:{port1}", "/api/values", 200, "Hello from Laura", butterflyUrl))
+                .And(x => GivenServiceTwoIsRunning($"http://localhost:{port2}", "/api/values", 200, "Hello from Tom", butterflyUrl))
                 .And(x => _steps.GivenThereIsAConfiguration(configuration))
                 .And(x => _steps.GivenOcelotIsRunningUsingButterfly(butterflyUrl))
                 .When(x => _steps.WhenIGetUrlOnTheApiGateway("/api001/values"))
@@ -105,6 +108,7 @@ namespace Ocelot.AcceptanceTests
         [Fact]
         public void should_return_tracing_header()
         {
+            int port = RandomPortFinder.GetRandomPort();
             var configuration = new FileConfiguration
             {
                 ReRoutes = new List<FileReRoute>
@@ -118,7 +122,7 @@ namespace Ocelot.AcceptanceTests
                                 new FileHostAndPort
                                 {
                                     Host = "localhost",
-                                    Port = 51387,
+                                    Port = port,
                                 }
                             },
                             UpstreamPathTemplate = "/api001/values",
@@ -136,10 +140,11 @@ namespace Ocelot.AcceptanceTests
                     }
             };
 
-            var butterflyUrl = "http://localhost:9618";
+            var butterflyPort = RandomPortFinder.GetRandomPort();
+            var butterflyUrl = $"http://localhost:{butterflyPort}";
 
             this.Given(x => GivenFakeButterfly(butterflyUrl))
-                .And(x => GivenServiceOneIsRunning("http://localhost:51387", "/api/values", 200, "Hello from Laura", butterflyUrl))
+                .And(x => GivenServiceOneIsRunning($"http://localhost:{port}", "/api/values", 200, "Hello from Laura", butterflyUrl))
                 .And(x => _steps.GivenThereIsAConfiguration(configuration))
                 .And(x => _steps.GivenOcelotIsRunningUsingButterfly(butterflyUrl))
                 .When(x => _steps.WhenIGetUrlOnTheApiGateway("/api001/values"))
@@ -157,7 +162,8 @@ namespace Ocelot.AcceptanceTests
                 .UseKestrel()
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseIISIntegration()
-                .ConfigureServices(services => {
+                .ConfigureServices(services =>
+                {
                     services.AddButterfly(option =>
                     {
                         option.CollectorUrl = butterflyUrl;
@@ -169,10 +175,10 @@ namespace Ocelot.AcceptanceTests
                 {
                     app.UsePathBase(basePath);
                     app.Run(async context =>
-                    {   
+                    {
                         _downstreamPathOne = !string.IsNullOrEmpty(context.Request.PathBase.Value) ? context.Request.PathBase.Value : context.Request.Path.Value;
 
-                        if(_downstreamPathOne != basePath)
+                        if (_downstreamPathOne != basePath)
                         {
                             context.Response.StatusCode = statusCode;
                             await context.Response.WriteAsync("downstream path didnt match base path");
@@ -216,7 +222,8 @@ namespace Ocelot.AcceptanceTests
                 .UseKestrel()
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .UseIISIntegration()
-                .ConfigureServices(services => {
+                .ConfigureServices(services =>
+                {
                     services.AddButterfly(option =>
                     {
                         option.CollectorUrl = butterflyUrl;
@@ -228,10 +235,10 @@ namespace Ocelot.AcceptanceTests
                 {
                     app.UsePathBase(basePath);
                     app.Run(async context =>
-                    {   
+                    {
                         _downstreamPathTwo = !string.IsNullOrEmpty(context.Request.PathBase.Value) ? context.Request.PathBase.Value : context.Request.Path.Value;
 
-                        if(_downstreamPathTwo != basePath)
+                        if (_downstreamPathTwo != basePath)
                         {
                             context.Response.StatusCode = statusCode;
                             await context.Response.WriteAsync("downstream path didnt match base path");

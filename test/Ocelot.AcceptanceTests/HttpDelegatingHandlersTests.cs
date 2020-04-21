@@ -1,14 +1,14 @@
 ﻿namespace Ocelot.AcceptanceTests
 {
+    using Microsoft.AspNetCore.Http;
+    using Ocelot.Configuration.File;
+    using Shouldly;
     using System;
     using System.Collections.Generic;
     using System.Net;
     using System.Net.Http;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.AspNetCore.Http;
-    using Ocelot.Configuration.File;
-    using Shouldly;
     using TestStack.BDDfy;
     using Xunit;
 
@@ -27,6 +27,8 @@
         [Fact]
         public void should_call_re_route_ordered_specific_handlers()
         {
+            var port = RandomPortFinder.GetRandomPort();
+
             var configuration = new FileConfiguration
             {
                 ReRoutes = new List<FileReRoute>
@@ -40,7 +42,7 @@
                             new FileHostAndPort
                             {
                                 Host = "localhost",
-                                Port = 7197,
+                                Port = port,
                             }
                         },
                         UpstreamPathTemplate = "/",
@@ -54,7 +56,7 @@
                 }
             };
 
-            this.Given(x => x.GivenThereIsAServiceRunningOn("http://localhost:7197", "/", 200, "Hello from Laura"))
+            this.Given(x => x.GivenThereIsAServiceRunningOn($"http://localhost:{port}", "/", 200, "Hello from Laura"))
                 .And(x => _steps.GivenThereIsAConfiguration(configuration))
                 .And(x => _steps.GivenOcelotIsRunningWithSpecficHandlersRegisteredInDi<FakeHandler, FakeHandlerTwo>())
                 .When(x => _steps.WhenIGetUrlOnTheApiGateway("/"))
@@ -67,6 +69,8 @@
         [Fact]
         public void should_call_global_di_handlers()
         {
+            var port = RandomPortFinder.GetRandomPort();
+
             var configuration = new FileConfiguration
             {
                 ReRoutes = new List<FileReRoute>
@@ -80,7 +84,7 @@
                             new FileHostAndPort
                             {
                                 Host = "localhost",
-                                Port = 7187,
+                                Port = port,
                             }
                         },
                         UpstreamPathTemplate = "/",
@@ -89,7 +93,7 @@
                 }
             };
 
-            this.Given(x => x.GivenThereIsAServiceRunningOn("http://localhost:7187", "/", 200, "Hello from Laura"))
+            this.Given(x => x.GivenThereIsAServiceRunningOn($"http://localhost:{port}", "/", 200, "Hello from Laura"))
                 .And(x => _steps.GivenThereIsAConfiguration(configuration))
                 .And(x => _steps.GivenOcelotIsRunningWithGlobalHandlersRegisteredInDi<FakeHandler, FakeHandlerTwo>())
                 .When(x => _steps.WhenIGetUrlOnTheApiGateway("/"))
@@ -102,6 +106,8 @@
         [Fact]
         public void should_call_global_di_handlers_multiple_times()
         {
+            var port = RandomPortFinder.GetRandomPort();
+
             var configuration = new FileConfiguration
             {
                 ReRoutes = new List<FileReRoute>
@@ -115,7 +121,7 @@
                             new FileHostAndPort
                             {
                                 Host = "localhost",
-                                Port = 9187,
+                                Port = port,
                             }
                         },
                         UpstreamPathTemplate = "/",
@@ -124,7 +130,7 @@
                 }
             };
 
-            this.Given(x => x.GivenThereIsAServiceRunningOn("http://localhost:9187", "/", 200, "Hello from Laura"))
+            this.Given(x => x.GivenThereIsAServiceRunningOn($"http://localhost:{port}", "/", 200, "Hello from Laura"))
                 .And(x => _steps.GivenThereIsAConfiguration(configuration))
                 .And(x => _steps.GivenOcelotIsRunningWithGlobalHandlerRegisteredInDi<FakeHandlerAgain>())
                 .When(x => _steps.WhenIGetUrlOnTheApiGateway("/"))
@@ -147,12 +153,14 @@
                 .When(x => _steps.WhenIGetUrlOnTheApiGateway("/"))
                 .Then(x => _steps.ThenTheStatusCodeShouldBe(HttpStatusCode.OK))
                 .And(x => _steps.ThenTheResponseBodyShouldBe("Hello from Laura"))
-                .BDDfy();   
+                .BDDfy();
         }
 
         [Fact]
         public void should_call_global_di_handlers_with_dependency()
         {
+            var port = RandomPortFinder.GetRandomPort();
+
             var configuration = new FileConfiguration
             {
                 ReRoutes = new List<FileReRoute>
@@ -166,7 +174,7 @@
                             new FileHostAndPort
                             {
                                 Host = "localhost",
-                                Port = 7188,
+                                Port = port,
                             }
                         },
                         UpstreamPathTemplate = "/",
@@ -177,7 +185,7 @@
 
             var dependency = new FakeDependency();
 
-            this.Given(x => x.GivenThereIsAServiceRunningOn("http://localhost:7188", "/", 200, "Hello from Laura"))
+            this.Given(x => x.GivenThereIsAServiceRunningOn($"http://localhost:{port}", "/", 200, "Hello from Laura"))
                 .And(x => _steps.GivenThereIsAConfiguration(configuration))
                 .And(x => _steps.GivenOcelotIsRunningWithGlobalHandlersRegisteredInDi<FakeHandlerWithDependency>(dependency))
                 .When(x => _steps.WhenIGetUrlOnTheApiGateway("/"))
@@ -203,7 +211,7 @@
         }
 
         public class FakeDependency
-        {            
+        {
             public bool Called;
         }
 
@@ -226,7 +234,7 @@
 
         // ReSharper disable once ClassNeverInstantiated.Local
         private class FakeHandler : DelegatingHandler
-        {  
+        {
             public static DateTime TimeCalled { get; private set; }
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -238,7 +246,7 @@
 
         // ReSharper disable once ClassNeverInstantiated.Local
         private class FakeHandlerTwo : DelegatingHandler
-        {  
+        {
             public static DateTime TimeCalled { get; private set; }
 
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)

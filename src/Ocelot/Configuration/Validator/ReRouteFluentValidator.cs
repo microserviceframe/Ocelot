@@ -1,9 +1,8 @@
 ﻿namespace Ocelot.Configuration.Validator
 {
-    using System;
+    using File;
     using FluentValidation;
     using Microsoft.AspNetCore.Authentication;
-    using File;
     using System.Linq;
     using System.Text.RegularExpressions;
     using System.Threading;
@@ -73,14 +72,21 @@
                 .MustAsync(IsSupportedAuthenticationProviders)
                 .WithMessage("{PropertyName} {PropertyValue} is unsupported authentication provider");
 
-            When(reRoute => string.IsNullOrEmpty(reRoute.ServiceName), () => {
+            When(reRoute => string.IsNullOrEmpty(reRoute.ServiceName), () =>
+            {
                 RuleFor(r => r.DownstreamHostAndPorts).NotEmpty()
                     .WithMessage("When not using service discovery DownstreamHostAndPorts must be set and not empty or Ocelot cannot find your service!");
             });
 
-            When(reRoute => string.IsNullOrEmpty(reRoute.ServiceName), () => {
-                RuleFor(reRoute => reRoute.DownstreamHostAndPorts)
-                    .SetCollectionValidator(hostAndPortValidator);
+            When(reRoute => string.IsNullOrEmpty(reRoute.ServiceName), () =>
+            {
+                RuleForEach(reRoute => reRoute.DownstreamHostAndPorts)
+                    .SetValidator(hostAndPortValidator);
+            });
+
+            When(reRoute => !string.IsNullOrEmpty(reRoute.DownstreamHttpVersion), () =>
+            {
+                RuleFor(r => r.DownstreamHttpVersion).Matches("^[0-9]([.,][0-9]{1,1})?$");
             });
         }
 

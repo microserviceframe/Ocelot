@@ -1,11 +1,10 @@
-[<img src="http://threemammals.com/images/ocelot_logo.png">](http://threemammals.com/ocelot)
+[<img src="https://threemammals.com/images/ocelot_logo.png">](https://threemammals.com/ocelot)
 
-[![Build status](https://ci.appveyor.com/api/projects/status/r6sv51qx36sis1je?branch=develop&svg=true)](https://ci.appveyor.com/project/TomPallister/ocelot-fcfpb) Windows (AppVeyor)
-[![Build Status](https://travis-ci.org/ThreeMammals/Ocelot.svg?branch=develop)](https://travis-ci.org/ThreeMammals/Ocelot) Linux & OSX (Travis)
+[![CircleCI](https://circleci.com/gh/ThreeMammals/Ocelot/tree/master.svg?style=svg)](https://circleci.com/gh/ThreeMammals/Ocelot/tree/master)
 
-[![Windows Build history](https://buildstats.info/appveyor/chart/TomPallister/ocelot-fcfpb?branch=develop&includeBuildsFromPullRequest=false)](https://ci.appveyor.com/project/TomPallister/ocelot-fcfpb/history?branch=develop)
+[![Coverage Status](https://coveralls.io/repos/github/ThreeMammals/Ocelot/badge.svg?branch=master)](https://coveralls.io/github/ThreeMammals/Ocelot?branch=master)
 
-[![Coverage Status](https://coveralls.io/repos/github/ThreeMammals/Ocelot/badge.svg?branch=develop)](https://coveralls.io/github/ThreeMammals/Ocelot?branch=develop)
+[Slack](https://threemammals.slack.com)
 
 # Ocelot
 
@@ -34,12 +33,13 @@ is returned to the client. That is basically it with a bunch of other features!
 
 ## Features
 
-A quick list of Ocelot's capabilities for more information see the [documentation](http://ocelot.readthedocs.io/en/latest/).
+A quick list of Ocelot's capabilities for more information see the [documentation](https://ocelot.readthedocs.io/en/latest/).
 
 * Routing
 * Request Aggregation
 * Service Discovery with Consul & Eureka
 * Service Fabric
+* Kubernetes 
 * WebSockets
 * Authentication
 * Authorisation
@@ -48,16 +48,16 @@ A quick list of Ocelot's capabilities for more information see the [documentatio
 * Retry policies / QoS
 * Load Balancing
 * Logging / Tracing / Correlation
-* Headers / Query String / Claims Transformation
+* Headers / Method / Query String / Claims Transformation
 * Custom Middleware / Delegating Handlers
 * Configuration / Administration REST API
 * Platform / Cloud Agnostic
 
 ## How to install
 
-Ocelot is designed to work with ASP.NET Core only and it targets `netstandard2.0`. This means it can be used anywhere `.NET Standard 2.0` is supported, including `.NET Core 2.1` and `.NET Framework 4.7.2` and up. [This](https://docs.microsoft.com/en-us/dotnet/standard/net-standard) documentation may prove helpful when working out if Ocelot would be suitable for you.
+Ocelot is designed to work with ASP.NET Core only and it targets `netcoreapp3.1`.
 
-Install Ocelot and it's dependencies using NuGet. 
+Install Ocelot and it's dependencies using NuGet.
 
 `Install-Package Ocelot`
 
@@ -69,7 +69,7 @@ All versions can be found [here](https://www.nuget.org/packages/Ocelot/)
 
 ## Documentation
 
-Please click [here](http://ocelot.readthedocs.io/en/latest/) for the Ocelot documentation. This includes lots of information and will be helpful if you want to understand the features Ocelot currently offers.
+Please click [here](https://ocelot.readthedocs.io/en/latest/) for the Ocelot documentation. This includes lots of information and will be helpful if you want to understand the features Ocelot currently offers.
 
 ## Coming up
 

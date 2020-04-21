@@ -2,9 +2,8 @@
 
 namespace Ocelot.UnitTests.RateLimit
 {
-    using System.Collections.Generic;
-    using System.Net.Http;
     using Microsoft.AspNetCore.Http;
+    using Microsoft.Extensions.Caching.Memory;
     using Moq;
     using Ocelot.Configuration;
     using Ocelot.Configuration.Builder;
@@ -12,13 +11,14 @@ namespace Ocelot.UnitTests.RateLimit
     using Ocelot.Logging;
     using Ocelot.RateLimit;
     using Ocelot.RateLimit.Middleware;
+    using Ocelot.Request.Middleware;
     using Shouldly;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Net.Http;
+    using System.Threading.Tasks;
     using TestStack.BDDfy;
     using Xunit;
-    using Microsoft.Extensions.Caching.Memory;
-    using System.IO;
-    using System.Threading.Tasks;
-    using Ocelot.Request.Middleware;
 
     public class ClientRateLimitMiddlewareTests
     {
@@ -54,14 +54,14 @@ namespace Ocelot.UnitTests.RateLimit
 
             var downstreamReRoute = new DownstreamReRouteBuilder()
                 .WithEnableRateLimiting(true)
-                .WithRateLimitOptions(new RateLimitOptions(true, "ClientId", new List<string>(), false, "", "", new RateLimitRule("1s", 100, 3), 429))
-                .WithUpstreamHttpMethod(new List<string> {"Get"})
+                .WithRateLimitOptions(new RateLimitOptions(true, "ClientId", () => new List<string>(), false, "", "", new RateLimitRule("1s", 100, 3), 429))
+                .WithUpstreamHttpMethod(new List<string> { "Get" })
                 .WithUpstreamPathTemplate(upstreamTemplate)
                 .Build();
 
             var reRoute = new ReRouteBuilder()
                 .WithDownstreamReRoute(downstreamReRoute)
-                .WithUpstreamHttpMethod(new List<string> {"Get"})
+                .WithUpstreamHttpMethod(new List<string> { "Get" })
                 .Build();
 
             var downstreamRoute = new DownstreamRoute(new List<Ocelot.DownstreamRouteFinder.UrlMatcher.PlaceholderNameAndValue>(), reRoute);
@@ -69,7 +69,7 @@ namespace Ocelot.UnitTests.RateLimit
             this.Given(x => x.GivenTheDownStreamRouteIs(downstreamRoute))
                 .When(x => x.WhenICallTheMiddlewareMultipleTime(2))
                 .Then(x => x.ThenresponseStatusCodeIs200())
-                .When(x => x.WhenICallTheMiddlewareMultipleTime(2))
+                .When(x => x.WhenICallTheMiddlewareMultipleTime(3))
                 .Then(x => x.ThenresponseStatusCodeIs429())
                 .BDDfy();
         }
@@ -82,7 +82,7 @@ namespace Ocelot.UnitTests.RateLimit
                      .WithDownstreamReRoute(new DownstreamReRouteBuilder()
                          .WithEnableRateLimiting(true)
                          .WithRateLimitOptions(
-                             new Ocelot.Configuration.RateLimitOptions(true, "ClientId", new List<string>() { "ocelotclient2" }, false, "", "", new RateLimitRule("1s", 100, 3), 429))
+                             new Ocelot.Configuration.RateLimitOptions(true, "ClientId", () => new List<string>() { "ocelotclient2" }, false, "", "", new RateLimitRule("1s", 100, 3), 429))
                          .WithUpstreamHttpMethod(new List<string> { "Get" })
                          .Build())
                      .WithUpstreamHttpMethod(new List<string> { "Get" })
@@ -103,7 +103,7 @@ namespace Ocelot.UnitTests.RateLimit
         private void WhenICallTheMiddlewareMultipleTime(int times)
         {
             var clientId = "ocelotclient1";
-  
+
             for (int i = 0; i < times; i++)
             {
                 var request = new HttpRequestMessage(new HttpMethod("GET"), _url);
@@ -118,7 +118,7 @@ namespace Ocelot.UnitTests.RateLimit
         private void WhenICallTheMiddlewareWithWhiteClient()
         {
             var clientId = "ocelotclient2";
- 
+
             for (int i = 0; i < 10; i++)
             {
                 var request = new HttpRequestMessage(new HttpMethod("GET"), _url);
@@ -127,9 +127,9 @@ namespace Ocelot.UnitTests.RateLimit
                 _downstreamContext.HttpContext.Request.Headers.TryAdd("ClientId", clientId);
 
                 _middleware.Invoke(_downstreamContext).GetAwaiter().GetResult();
-                _responseStatusCode = (int)_downstreamContext.HttpContext.Response.StatusCode;            
+                _responseStatusCode = (int)_downstreamContext.HttpContext.Response.StatusCode;
             }
-         }      
+        }
 
         private void ThenresponseStatusCodeIs429()
         {
@@ -142,11 +142,12 @@ namespace Ocelot.UnitTests.RateLimit
         }
     }
 
-    class FakeStream : Stream
+    internal class FakeStream : Stream
     {
         public override void Flush()
         {
-            throw new System.NotImplementedException();
+            //do nothing
+            //throw new System.NotImplementedException();
         }
 
         public override int Read(byte[] buffer, int offset, int count)

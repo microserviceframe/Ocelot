@@ -1,4 +1,5 @@
-﻿using KubeClient.Models;
+﻿using KubeClient;
+using KubeClient.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -20,8 +21,8 @@ namespace Ocelot.UnitTests.Kubernetes
     public class KubeServiceDiscoveryProviderTests : IDisposable
     {
         private IWebHost _fakeKubeBuilder;
-        private ServiceV1 _serviceEntries;
-        private Kube _provider;
+        private readonly KubernetesServiceDiscoveryProvider _provider;
+        private EndpointsV1 _endpointEntries;
         private readonly string _serviceName;
         private readonly string _namespaces;
         private readonly int _port;
@@ -31,62 +32,64 @@ namespace Ocelot.UnitTests.Kubernetes
         private readonly Mock<IOcelotLoggerFactory> _factory;
         private readonly Mock<IOcelotLogger> _logger;
         private string _receivedToken;
-        private readonly IKubeApiClientFactory _clientFactory;
+        private readonly IKubeApiClient _clientFactory;
 
         public KubeServiceDiscoveryProviderTests()
         {
             _serviceName = "test";
             _namespaces = "dev";
-            _port = 8001;
+            _port = 86;
             _kubeHost = "localhost";
             _fakekubeServiceDiscoveryUrl = $"http://{_kubeHost}:{_port}";
-            _serviceEntries = new ServiceV1();
+            _endpointEntries = new EndpointsV1();
             _factory = new Mock<IOcelotLoggerFactory>();
-            _clientFactory = new KubeApiClientFactory();
-            _logger = new Mock<IOcelotLogger>();
-            _factory.Setup(x => x.CreateLogger<Kube>()).Returns(_logger.Object);
-            var config = new KubeRegistryConfiguration()
+
+            var option = new KubeClientOptions
             {
                 ApiEndPoint = new Uri(_fakekubeServiceDiscoveryUrl),
                 AccessToken = "txpc696iUhbVoudg164r93CxDTrKRVWG",
-                AllowInsecure = true,
                 AuthStrategy = KubeClient.KubeAuthStrategy.BearerToken,
-                KeyOfServiceInK8s = _serviceName,
-                KubeNamespace = _namespaces
+                AllowInsecure = true,
             };
-            _provider = new Kube(config, _factory.Object, _clientFactory);
+
+            _clientFactory = KubeApiClient.Create(option);
+            _logger = new Mock<IOcelotLogger>();
+            _factory.Setup(x => x.CreateLogger<KubernetesServiceDiscoveryProvider>()).Returns(_logger.Object);
+            var config = new KubeRegistryConfiguration()
+            {
+                KeyOfServiceInK8s = _serviceName,
+                KubeNamespace = _namespaces,
+            };
+            _provider = new KubernetesServiceDiscoveryProvider(config, _factory.Object, _clientFactory);
         }
 
         [Fact]
         public void should_return_service_from_k8s()
         {
             var token = "Bearer txpc696iUhbVoudg164r93CxDTrKRVWG";
-            var serviceEntryOne = new ServiceV1()
+            var endPointEntryOne = new EndpointsV1
             {
-                Kind = "service",
+                Kind = "endpoint",
                 ApiVersion = "1.0",
                 Metadata = new ObjectMetaV1()
                 {
-                    Namespace = "dev"
+                    Namespace = "dev",
                 },
-                Spec = new ServiceSpecV1()
-                 {
-                     ClusterIP = "localhost"                     
-                },
-                Status = new ServiceStatusV1() {
-                    LoadBalancer = new LoadBalancerStatusV1()
-                }
             };
+            var endpointSubsetV1 = new EndpointSubsetV1();
+            endpointSubsetV1.Addresses.Add(new EndpointAddressV1()
+            {
+                Ip = "127.0.0.1",
+                Hostname = "localhost",
+            });
+            endpointSubsetV1.Ports.Add(new EndpointPortV1()
+            {
+                Port = 80,
+            });
+            endPointEntryOne.Subsets.Add(endpointSubsetV1);
 
-            serviceEntryOne.Spec.Ports.Add(
-                new ServicePortV1()
-                {
-                    Port = 80
-                }
-            );
-
-            this.Given(x => GivenThereIsAFakeKubeServiceDiscoveryProvider(_fakekubeServiceDiscoveryUrl,  _serviceName, _namespaces))
-                .And(x => GivenTheServicesAreRegisteredWithKube(serviceEntryOne))
+            this.Given(x => GivenThereIsAFakeKubeServiceDiscoveryProvider(_fakekubeServiceDiscoveryUrl, _serviceName, _namespaces))
+                .And(x => GivenTheServicesAreRegisteredWithKube(endPointEntryOne))
                 .When(x => WhenIGetTheServices())
                 .Then(x => ThenTheCountIs(1))
                 .And(_ => _receivedToken.ShouldBe(token))
@@ -103,11 +106,10 @@ namespace Ocelot.UnitTests.Kubernetes
             _services = _provider.Get().GetAwaiter().GetResult();
         }
 
-        private void GivenTheServicesAreRegisteredWithKube(ServiceV1 serviceEntries)
+        private void GivenTheServicesAreRegisteredWithKube(EndpointsV1 endpointEntries)
         {
-            _serviceEntries = serviceEntries;
+            _endpointEntries = endpointEntries;
         }
-
 
         private void GivenThereIsAFakeKubeServiceDiscoveryProvider(string url, string serviceName, string namespaces)
         {
@@ -121,14 +123,14 @@ namespace Ocelot.UnitTests.Kubernetes
                 {
                     app.Run(async context =>
                     {
-                        if (context.Request.Path.Value == $"/api/v1/namespaces/{namespaces}/services/{serviceName}")
+                        if (context.Request.Path.Value == $"/api/v1/namespaces/{namespaces}/endpoints/{serviceName}")
                         {
                             if (context.Request.Headers.TryGetValue("Authorization", out var values))
                             {
                                 _receivedToken = values.First();
                             }
 
-                            var json = JsonConvert.SerializeObject(_serviceEntries);
+                            var json = JsonConvert.SerializeObject(_endpointEntries);
                             context.Response.Headers.Add("Content-Type", "application/json");
                             await context.Response.WriteAsync(json);
                         }

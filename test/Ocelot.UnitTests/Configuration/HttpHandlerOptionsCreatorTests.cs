@@ -1,20 +1,19 @@
-﻿using System;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Ocelot.Configuration;
 using Ocelot.Configuration.Creator;
 using Ocelot.Configuration.File;
-using Ocelot.Requester;
 using Shouldly;
+using System;
 using TestStack.BDDfy;
 using Xunit;
 
 namespace Ocelot.UnitTests.Configuration
 {
+    using Microsoft.AspNetCore.Http;
+    using Ocelot.Logging;
     using System.Net.Http;
     using System.Threading;
     using System.Threading.Tasks;
-    using Microsoft.AspNetCore.Http;
-    using Ocelot.Logging;
 
     public class HttpHandlerOptionsCreatorTests
     {
@@ -34,7 +33,7 @@ namespace Ocelot.UnitTests.Configuration
         [Fact]
         public void should_not_use_tracing_if_fake_tracer_registered()
         {
-            var fileReRoute = new FileReRoute 
+            var fileReRoute = new FileReRoute
             {
                 HttpHandlerOptions = new FileHttpHandlerOptions
                 {
@@ -42,7 +41,7 @@ namespace Ocelot.UnitTests.Configuration
                 }
             };
 
-            var expectedOptions = new HttpHandlerOptions(false, false, false, true);
+            var expectedOptions = new HttpHandlerOptions(false, false, false, true, int.MaxValue);
 
             this.Given(x => GivenTheFollowing(fileReRoute))
                 .When(x => WhenICreateHttpHandlerOptions())
@@ -53,7 +52,7 @@ namespace Ocelot.UnitTests.Configuration
         [Fact]
         public void should_use_tracing_if_real_tracer_registered()
         {
-            var fileReRoute = new FileReRoute 
+            var fileReRoute = new FileReRoute
             {
                 HttpHandlerOptions = new FileHttpHandlerOptions
                 {
@@ -61,7 +60,7 @@ namespace Ocelot.UnitTests.Configuration
                 }
             };
 
-            var expectedOptions = new HttpHandlerOptions(false, false, true, true);
+            var expectedOptions = new HttpHandlerOptions(false, false, true, true, int.MaxValue);
 
             this.Given(x => GivenTheFollowing(fileReRoute))
                 .And(x => GivenARealTracer())
@@ -74,7 +73,7 @@ namespace Ocelot.UnitTests.Configuration
         public void should_create_options_with_useCookie_false_and_allowAutoRedirect_true_as_default()
         {
             var fileReRoute = new FileReRoute();
-            var expectedOptions = new HttpHandlerOptions(false, false, false, true);
+            var expectedOptions = new HttpHandlerOptions(false, false, false, true, int.MaxValue);
 
             this.Given(x => GivenTheFollowing(fileReRoute))
                 .When(x => WhenICreateHttpHandlerOptions())
@@ -95,7 +94,7 @@ namespace Ocelot.UnitTests.Configuration
                 }
             };
 
-            var expectedOptions = new HttpHandlerOptions(false, false, false, true);
+            var expectedOptions = new HttpHandlerOptions(false, false, false, true, int.MaxValue);
 
             this.Given(x => GivenTheFollowing(fileReRoute))
                 .When(x => WhenICreateHttpHandlerOptions())
@@ -111,7 +110,7 @@ namespace Ocelot.UnitTests.Configuration
                 HttpHandlerOptions = new FileHttpHandlerOptions()
             };
 
-            var expectedOptions = new HttpHandlerOptions(false, false, false, true);
+            var expectedOptions = new HttpHandlerOptions(false, false, false, true, int.MaxValue);
 
             this.Given(x => GivenTheFollowing(fileReRoute))
                 .When(x => WhenICreateHttpHandlerOptions())
@@ -130,7 +129,64 @@ namespace Ocelot.UnitTests.Configuration
                 }
             };
 
-            var expectedOptions = new HttpHandlerOptions(false, false, false, false);
+            var expectedOptions = new HttpHandlerOptions(false, false, false, false, int.MaxValue);
+
+            this.Given(x => GivenTheFollowing(fileReRoute))
+                .When(x => WhenICreateHttpHandlerOptions())
+                .Then(x => ThenTheFollowingOptionsReturned(expectedOptions))
+                .BDDfy();
+        }
+
+        [Fact]
+        public void should_create_options_with_specified_MaxConnectionsPerServer()
+        {
+            var fileReRoute = new FileReRoute
+            {
+                HttpHandlerOptions = new FileHttpHandlerOptions
+                {
+                    MaxConnectionsPerServer = 10
+                }
+            };
+
+            var expectedOptions = new HttpHandlerOptions(false, false, false, true, 10);
+
+            this.Given(x => GivenTheFollowing(fileReRoute))
+                .When(x => WhenICreateHttpHandlerOptions())
+                .Then(x => ThenTheFollowingOptionsReturned(expectedOptions))
+                .BDDfy();
+        }
+
+        [Fact]
+        public void should_create_options_fixing_specified_MaxConnectionsPerServer_range()
+        {
+            var fileReRoute = new FileReRoute
+            {
+                HttpHandlerOptions = new FileHttpHandlerOptions
+                {
+                    MaxConnectionsPerServer = -1
+                }
+            };
+
+            var expectedOptions = new HttpHandlerOptions(false, false, false, true, int.MaxValue);
+
+            this.Given(x => GivenTheFollowing(fileReRoute))
+                .When(x => WhenICreateHttpHandlerOptions())
+                .Then(x => ThenTheFollowingOptionsReturned(expectedOptions))
+                .BDDfy();
+        }
+
+        [Fact]
+        public void should_create_options_fixing_specified_MaxConnectionsPerServer_range_when_zero()
+        {
+            var fileReRoute = new FileReRoute
+            {
+                HttpHandlerOptions = new FileHttpHandlerOptions
+                {
+                    MaxConnectionsPerServer = 0
+                }
+            };
+
+            var expectedOptions = new HttpHandlerOptions(false, false, false, true, int.MaxValue);
 
             this.Given(x => GivenTheFollowing(fileReRoute))
                 .When(x => WhenICreateHttpHandlerOptions())
@@ -155,6 +211,7 @@ namespace Ocelot.UnitTests.Configuration
             _httpHandlerOptions.UseCookieContainer.ShouldBe(expected.UseCookieContainer);
             _httpHandlerOptions.UseTracing.ShouldBe(expected.UseTracing);
             _httpHandlerOptions.UseProxy.ShouldBe(expected.UseProxy);
+            _httpHandlerOptions.MaxConnectionsPerServer.ShouldBe(expected.MaxConnectionsPerServer);
         }
 
         private void GivenARealTracer()
@@ -165,7 +222,7 @@ namespace Ocelot.UnitTests.Configuration
             _httpHandlerOptionsCreator = new HttpHandlerOptionsCreator(_serviceProvider);
         }
 
-        class FakeTracer : ITracer
+        private class FakeTracer : ITracer
         {
             public void Event(HttpContext httpContext, string @event)
             {

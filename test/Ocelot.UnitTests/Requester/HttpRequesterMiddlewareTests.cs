@@ -1,21 +1,21 @@
 namespace Ocelot.UnitTests.Requester
 {
     using Microsoft.AspNetCore.Http;
-    using System.Net.Http;
     using Moq;
+    using Ocelot.Configuration.Builder;
     using Ocelot.Logging;
+    using Ocelot.Middleware;
     using Ocelot.Requester;
     using Ocelot.Requester.Middleware;
     using Ocelot.Responses;
-    using TestStack.BDDfy;
-    using Xunit;
+    using Ocelot.UnitTests.Responder;
     using Shouldly;
-    using System.Threading.Tasks;
-    using Ocelot.Configuration.Builder;
-    using Ocelot.Middleware;
     using System;
     using System.Linq;
-    using Ocelot.UnitTests.Responder;
+    using System.Net.Http;
+    using System.Threading.Tasks;
+    using TestStack.BDDfy;
+    using Xunit;
 
     public class HttpRequesterMiddlewareTests
     {
@@ -41,9 +41,10 @@ namespace Ocelot.UnitTests.Requester
         public void should_call_services_correctly()
         {
             this.Given(x => x.GivenTheRequestIs())
-                .And(x => x.GivenTheRequesterReturns(new OkResponse<HttpResponseMessage>(new HttpResponseMessage())))
+                .And(x => x.GivenTheRequesterReturns(new OkResponse<HttpResponseMessage>(new HttpResponseMessage(System.Net.HttpStatusCode.OK))))
                 .When(x => x.WhenICallTheMiddleware())
                 .Then(x => x.ThenTheDownstreamResponseIsSet())
+                .Then(x => InformationIsLogged())
                 .BDDfy();
         }
 
@@ -54,6 +55,17 @@ namespace Ocelot.UnitTests.Requester
                 .And(x => x.GivenTheRequesterReturns(new ErrorResponse<HttpResponseMessage>(new AnyError())))
                 .When(x => x.WhenICallTheMiddleware())
                 .Then(x => x.ThenTheErrorIsSet())
+                .BDDfy();
+        }
+
+        [Fact]
+        public void should_log_downstream_internal_server_error()
+        {
+            this.Given(x => x.GivenTheRequestIs())
+                    .And(x => x.GivenTheRequesterReturns(
+                        new OkResponse<HttpResponseMessage>(new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError))))
+                .When(x => x.WhenICallTheMiddleware())
+                .Then(x => x.WarningIsLogged())
                 .BDDfy();
         }
 
@@ -97,6 +109,24 @@ namespace Ocelot.UnitTests.Requester
 
             _downstreamContext.DownstreamResponse.Content.ShouldBe(_response.Data.Content);
             _downstreamContext.DownstreamResponse.StatusCode.ShouldBe(_response.Data.StatusCode);
+        }
+
+        private void WarningIsLogged()
+        {
+            _logger.Verify(
+                x => x.LogWarning(                 
+                    It.IsAny<string>()
+                   ),
+                Times.Once);
+        }
+
+        private void InformationIsLogged()
+        {
+            _logger.Verify(
+                x => x.LogInformation(
+                    It.IsAny<string>()
+                ),
+                Times.Once);
         }
     }
 }

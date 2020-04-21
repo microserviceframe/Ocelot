@@ -1,8 +1,9 @@
-using System.Collections.Generic;
-using System.Net.Http;
-using Ocelot.Values;
-using System.Linq;
 using Ocelot.Configuration.Creator;
+using Ocelot.Values;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
 
 namespace Ocelot.Configuration.Builder
 {
@@ -19,6 +20,7 @@ namespace Ocelot.Configuration.Builder
         private Dictionary<string, string> _routeClaimRequirement;
         private bool _isAuthorised;
         private List<ClaimToThing> _claimToQueries;
+        private List<ClaimToThing> _claimToDownstreamPath;
         private string _requestIdHeaderKey;
         private bool _isCached;
         private CacheOptions _fileCacheOptions;
@@ -30,6 +32,7 @@ namespace Ocelot.Configuration.Builder
         private RateLimitOptions _rateLimitOptions;
         private bool _useServiceDiscovery;
         private string _serviceName;
+        private string _serviceNamespace;
         private List<HeaderFindAndReplace> _upstreamHeaderFindAndReplace;
         private List<HeaderFindAndReplace> _downstreamHeaderFindAndReplace;
         private readonly List<DownstreamHostAndPort> _downstreamAddresses;
@@ -39,6 +42,9 @@ namespace Ocelot.Configuration.Builder
         private List<AddHeader> _addHeadersToUpstream;
         private bool _dangerousAcceptAnyServerCertificateValidator;
         private SecurityOptions _securityOptions;
+        private string _downstreamHttpMethod;
+        private Version _downstreamHttpVersion;
+
         public DownstreamReRouteBuilder()
         {
             _downstreamAddresses = new List<DownstreamHostAndPort>();
@@ -53,9 +59,15 @@ namespace Ocelot.Configuration.Builder
             return this;
         }
 
+        public DownstreamReRouteBuilder WithDownStreamHttpMethod(string method)
+        {
+            _downstreamHttpMethod = method;
+            return this;
+        }
+
         public DownstreamReRouteBuilder WithLoadBalancerOptions(LoadBalancerOptions loadBalancerOptions)
         {
-          _loadBalancerOptions = loadBalancerOptions;
+            _loadBalancerOptions = loadBalancerOptions;
             return this;
         }
 
@@ -125,6 +137,12 @@ namespace Ocelot.Configuration.Builder
             return this;
         }
 
+        public DownstreamReRouteBuilder WithClaimsToDownstreamPath(List<ClaimToThing> input)
+        {
+            _claimToDownstreamPath = input;
+            return this;
+        }
+
         public DownstreamReRouteBuilder WithIsCached(bool input)
         {
             _isCached = input;
@@ -142,7 +160,7 @@ namespace Ocelot.Configuration.Builder
             _qosOptions = input;
             return this;
         }
-       
+
         public DownstreamReRouteBuilder WithLoadBalancerKey(string loadBalancerKey)
         {
             _loadBalancerKey = loadBalancerKey;
@@ -182,6 +200,12 @@ namespace Ocelot.Configuration.Builder
         public DownstreamReRouteBuilder WithServiceName(string serviceName)
         {
             _serviceName = serviceName;
+            return this;
+        }
+
+        public DownstreamReRouteBuilder WithServiceNamespace(string serviceNamespace)
+        {
+            _serviceNamespace = serviceNamespace;
             return this;
         }
 
@@ -233,39 +257,49 @@ namespace Ocelot.Configuration.Builder
             return this;
         }
 
+        public DownstreamReRouteBuilder WithDownstreamHttpVersion(Version downstreamHttpVersion)
+        {
+            _downstreamHttpVersion = downstreamHttpVersion;
+            return this;
+        }
+
         public DownstreamReRoute Build()
         {
             return new DownstreamReRoute(
                 _key,
                 _upstreamTemplatePattern,
                 _upstreamHeaderFindAndReplace,
-                _downstreamHeaderFindAndReplace, 
+                _downstreamHeaderFindAndReplace,
                 _downstreamAddresses,
-                _serviceName, 
-                _httpHandlerOptions, 
-                _useServiceDiscovery, 
-                _enableRateLimiting, 
+                _serviceName,
+                _serviceNamespace,
+                _httpHandlerOptions,
+                _useServiceDiscovery,
+                _enableRateLimiting,
                 _qosOptions,
-                _downstreamScheme, 
-                _requestIdHeaderKey, 
-                _isCached, 
-                _fileCacheOptions, 
-                _loadBalancerOptions, 
+                _downstreamScheme,
+                _requestIdHeaderKey,
+                _isCached,
+                _fileCacheOptions,
+                _loadBalancerOptions,
                 _rateLimitOptions,
-                _routeClaimRequirement, 
-                _claimToQueries, 
-                _claimsToHeaders, 
+                _routeClaimRequirement,
+                _claimToQueries,
+                _claimsToHeaders,
                 _claimToClaims,
-                _isAuthenticated, 
-                _isAuthorised, 
-                _authenticationOptions, 
+                _claimToDownstreamPath,
+                _isAuthenticated,
+                _isAuthorised,
+                _authenticationOptions,
                 new DownstreamPathTemplate(_downstreamPathTemplate),
                 _loadBalancerKey,
                 _delegatingHandlers,
                 _addHeadersToDownstream,
                 _addHeadersToUpstream,
                 _dangerousAcceptAnyServerCertificateValidator,
-                _securityOptions);
+                _securityOptions,
+                _downstreamHttpMethod,
+                _downstreamHttpVersion);
         }
     }
 }

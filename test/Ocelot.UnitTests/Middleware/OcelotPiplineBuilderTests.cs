@@ -3,17 +3,18 @@ using System.Threading.Tasks;
 
 namespace Ocelot.UnitTests.Middleware
 {
-    using System.Collections.Generic;
     using Microsoft.AspNetCore.Hosting;
-    using Microsoft.AspNetCore.Hosting.Internal;
     using Microsoft.AspNetCore.Http;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
+    using Moq;
     using Ocelot.DependencyInjection;
     using Ocelot.Logging;
     using Ocelot.Middleware;
     using Ocelot.Middleware.Pipeline;
     using Shouldly;
+    using System.Collections.Generic;
+    using System.Reflection;
     using TestStack.BDDfy;
     using Xunit;
 
@@ -28,9 +29,20 @@ namespace Ocelot.UnitTests.Middleware
         {
             _configRoot = new ConfigurationRoot(new List<IConfigurationProvider>());
             _services = new ServiceCollection();
-            _services.AddSingleton<IHostingEnvironment, HostingEnvironment>();
+            _services.AddSingleton<IWebHostEnvironment>(GetHostingEnvironment());
             _services.AddSingleton<IConfiguration>(_configRoot);
             _services.AddOcelot();
+        }
+
+
+        private IWebHostEnvironment GetHostingEnvironment()
+        {
+            var environment = new Mock<IWebHostEnvironment>();
+            environment
+                .Setup(e => e.ApplicationName)
+                .Returns(typeof(OcelotPiplineBuilderTests).GetTypeInfo().Assembly.GetName().Name);
+
+            return environment.Object;
         }
 
         [Fact]
@@ -79,8 +91,6 @@ namespace Ocelot.UnitTests.Middleware
             del.Invoke(_downstreamContext);
         }
 
-  
-
         private void ThenTheFuncIsInThePipeline()
         {
             _counter.ShouldBe(1);
@@ -103,7 +113,7 @@ namespace Ocelot.UnitTests.Middleware
             private readonly OcelotRequestDelegate _next;
 
             public MultiParametersInvokeMiddleware(OcelotRequestDelegate next)
-                :base(new FakeLogger())
+                : base(new FakeLogger())
             {
                 _next = next;
             }
@@ -115,7 +125,7 @@ namespace Ocelot.UnitTests.Middleware
         }
     }
 
-    class FakeLogger : IOcelotLogger
+    internal class FakeLogger : IOcelotLogger
     {
         public void LogCritical(string message, Exception exception)
         {

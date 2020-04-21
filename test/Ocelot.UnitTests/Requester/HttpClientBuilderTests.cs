@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -16,6 +10,12 @@ using Ocelot.Request.Middleware;
 using Ocelot.Requester;
 using Ocelot.Responses;
 using Shouldly;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
 using TestStack.BDDfy;
 using Xunit;
 
@@ -52,7 +52,7 @@ namespace Ocelot.UnitTests.Requester
 
             var reRoute = new DownstreamReRouteBuilder()
                 .WithQosOptions(qosOptions)
-                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true))
+                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true, int.MaxValue))
                 .WithLoadBalancerKey("")
                 .WithUpstreamPathTemplate(new UpstreamPathTemplateBuilder().WithOriginalValue("").Build())
                 .WithQosOptions(new QoSOptionsBuilder().Build())
@@ -73,7 +73,7 @@ namespace Ocelot.UnitTests.Requester
 
             var reRoute = new DownstreamReRouteBuilder()
                 .WithQosOptions(qosOptions)
-                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true))
+                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true, int.MaxValue))
                 .WithLoadBalancerKey("")
                 .WithUpstreamPathTemplate(new UpstreamPathTemplateBuilder().WithOriginalValue("").Build())
                 .WithQosOptions(new QoSOptionsBuilder().Build())
@@ -99,7 +99,7 @@ namespace Ocelot.UnitTests.Requester
 
             var reRoute = new DownstreamReRouteBuilder()
                 .WithQosOptions(qosOptions)
-                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true))
+                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true, int.MaxValue))
                 .WithLoadBalancerKey("")
                 .WithUpstreamPathTemplate(new UpstreamPathTemplateBuilder().WithOriginalValue("").Build())
                 .WithQosOptions(new QoSOptionsBuilder().Build())
@@ -126,7 +126,7 @@ namespace Ocelot.UnitTests.Requester
 
             var reRouteA = new DownstreamReRouteBuilder()
                 .WithQosOptions(qosOptions)
-                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true))
+                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true, int.MaxValue))
                 .WithLoadBalancerKey("")
                 .WithUpstreamPathTemplate(new UpstreamPathTemplateBuilder().WithContainsQueryString(true).WithOriginalValue("").Build())
                 .WithQosOptions(new QoSOptionsBuilder().Build())
@@ -134,7 +134,7 @@ namespace Ocelot.UnitTests.Requester
 
             var reRouteB = new DownstreamReRouteBuilder()
                 .WithQosOptions(qosOptions)
-                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true))
+                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true, int.MaxValue))
                 .WithLoadBalancerKey("")
                 .WithUpstreamPathTemplate(new UpstreamPathTemplateBuilder().WithContainsQueryString(true).WithOriginalValue("").Build())
                 .WithQosOptions(new QoSOptionsBuilder().Build())
@@ -161,7 +161,7 @@ namespace Ocelot.UnitTests.Requester
 
             var reRoute = new DownstreamReRouteBuilder()
                 .WithQosOptions(qosOptions)
-                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true))
+                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true, int.MaxValue))
                 .WithLoadBalancerKey("")
                 .WithUpstreamPathTemplate(new UpstreamPathTemplateBuilder().WithOriginalValue("").Build())
                 .WithQosOptions(new QoSOptionsBuilder().Build())
@@ -184,7 +184,7 @@ namespace Ocelot.UnitTests.Requester
 
             var reRoute = new DownstreamReRouteBuilder()
                 .WithQosOptions(qosOptions)
-                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true))
+                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true, int.MaxValue))
                 .WithLoadBalancerKey("")
                 .WithUpstreamPathTemplate(new UpstreamPathTemplateBuilder().WithOriginalValue("").Build())
                 .WithQosOptions(new QoSOptionsBuilder().Build())
@@ -194,7 +194,7 @@ namespace Ocelot.UnitTests.Requester
             var fakeTwo = new FakeDelegatingHandler();
 
             var handlers = new List<Func<DelegatingHandler>>()
-            { 
+            {
                 () => fakeOne,
                 () => fakeTwo
             };
@@ -216,7 +216,7 @@ namespace Ocelot.UnitTests.Requester
 
             var reRoute = new DownstreamReRouteBuilder()
                 .WithQosOptions(qosOptions)
-                .WithHttpHandlerOptions(new HttpHandlerOptions(false, true, false, true))
+                .WithHttpHandlerOptions(new HttpHandlerOptions(false, true, false, true, int.MaxValue))
                 .WithLoadBalancerKey("")
                 .WithUpstreamPathTemplate(new UpstreamPathTemplateBuilder().WithOriginalValue("").Build())
                 .WithQosOptions(new QoSOptionsBuilder().Build())
@@ -252,7 +252,7 @@ namespace Ocelot.UnitTests.Requester
 
             var reRoute = new DownstreamReRouteBuilder()
                 .WithQosOptions(qosOptions)
-                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true))
+                .WithHttpHandlerOptions(new HttpHandlerOptions(false, false, false, true, int.MaxValue))
                 .WithLoadBalancerKey("")
                 .WithUpstreamPathTemplate(new UpstreamPathTemplateBuilder().WithOriginalValue("").Build())
                 .WithQosOptions(new QoSOptionsBuilder().Build())
@@ -396,7 +396,7 @@ namespace Ocelot.UnitTests.Requester
 
         private void GivenTheFactoryReturns()
         {
-            var handlers = new List<Func<DelegatingHandler>>(){ () => new FakeDelegatingHandler()};
+            var handlers = new List<Func<DelegatingHandler>>() { () => new FakeDelegatingHandler() };
 
             _factory
                 .Setup(x => x.Get(It.IsAny<DownstreamReRoute>()))
@@ -414,9 +414,9 @@ namespace Ocelot.UnitTests.Requester
 
         private void GivenTheFactoryReturns(List<Func<DelegatingHandler>> handlers)
         {
-             _factory
-                .Setup(x => x.Get(It.IsAny<DownstreamReRoute>()))
-                .Returns(new OkResponse<List<Func<DelegatingHandler>>>(handlers));
+            _factory
+               .Setup(x => x.Get(It.IsAny<DownstreamReRoute>()))
+               .Returns(new OkResponse<List<Func<DelegatingHandler>>>(handlers));
         }
 
         private void WhenIBuild()

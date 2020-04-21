@@ -19,6 +19,7 @@ namespace Ocelot.Request.Middleware
             Headers = _request.Headers;
             AbsolutePath = _request.RequestUri.AbsolutePath;
             Query = _request.RequestUri.Query;
+            Content = _request.Content;
         }
 
         public HttpRequestHeaders Headers { get; }
@@ -37,6 +38,8 @@ namespace Ocelot.Request.Middleware
 
         public string Query { get; set; }
 
+        public HttpContent Content { get; set; }
+
         public HttpRequestMessage ToHttpRequestMessage()
         {
             var uriBuilder = new UriBuilder
@@ -49,6 +52,7 @@ namespace Ocelot.Request.Middleware
             };
 
             _request.RequestUri = uriBuilder.Uri;
+            _request.Method = new HttpMethod(Method);
             return _request;
         }
 
@@ -66,7 +70,7 @@ namespace Ocelot.Request.Middleware
             return uriBuilder.Uri.AbsoluteUri;
         }
 
-        public override string ToString() 
+        public override string ToString()
         {
             return ToUri();
         }

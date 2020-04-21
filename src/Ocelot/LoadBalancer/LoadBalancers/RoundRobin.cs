@@ -1,12 +1,12 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using Ocelot.Responses;
-using Ocelot.Values;
-using System;
-using Ocelot.Middleware;
-
-namespace Ocelot.LoadBalancer.LoadBalancers
+﻿namespace Ocelot.LoadBalancer.LoadBalancers
 {
+    using Ocelot.Middleware;
+    using Ocelot.Responses;
+    using Ocelot.Values;
+    using System;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+
     public class RoundRobin : ILoadBalancer
     {
         private readonly Func<Task<List<Service>>> _services;
@@ -22,7 +22,7 @@ namespace Ocelot.LoadBalancer.LoadBalancers
         public async Task<Response<ServiceHostAndPort>> Lease(DownstreamContext downstreamContext)
         {
             var services = await _services();
-            lock(_lock)
+            lock (_lock)
             {
                 if (_last >= services.Count)
                 {

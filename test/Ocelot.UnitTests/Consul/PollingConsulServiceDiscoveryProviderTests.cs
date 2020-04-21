@@ -1,13 +1,13 @@
 ﻿namespace Ocelot.UnitTests.Consul
 {
-    using System;
-    using System.Collections.Generic;
     using Moq;
     using Ocelot.Infrastructure;
     using Ocelot.Logging;
     using Ocelot.ServiceDiscovery.Providers;
     using Provider.Consul;
     using Shouldly;
+    using System;
+    using System.Collections.Generic;
     using TestStack.BDDfy;
     using Values;
     using Xunit;
@@ -15,7 +15,6 @@
     public class PollingConsulServiceDiscoveryProviderTests
     {
         private readonly int _delay;
-        private PollConsul _provider;
         private readonly List<Service> _services;
         private readonly Mock<IOcelotLoggerFactory> _factory;
         private readonly Mock<IOcelotLogger> _logger;
@@ -56,26 +55,28 @@
 
         private void WhenIGetTheServices(int expected)
         {
-            _provider = new PollConsul(_delay, _factory.Object, _consulServiceDiscoveryProvider.Object);
-
-            var result = Wait.WaitFor(3000).Until(() => {
-                try
+            using (var provider = new PollConsul(_delay, _factory.Object, _consulServiceDiscoveryProvider.Object))
+            {
+                var result = Wait.WaitFor(3000).Until(() =>
                 {
-                    _result = _provider.Get().GetAwaiter().GetResult();
-                    if (_result.Count == expected)
+                    try
                     {
-                        return true;
+                        _result = provider.Get().GetAwaiter().GetResult();
+                        if (_result.Count == expected)
+                        {
+                            return true;
+                        }
+
+                        return false;
                     }
+                    catch (Exception)
+                    {
+                        return false;
+                    }
+                });
 
-                    return false;
-                }
-                catch (Exception)
-                {
-                    return false;
-                }
-            });
-
-            result.ShouldBeTrue();
+                result.ShouldBeTrue();
+            }
         }
     }
 }

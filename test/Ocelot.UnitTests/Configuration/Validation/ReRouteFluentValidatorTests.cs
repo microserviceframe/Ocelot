@@ -1,8 +1,5 @@
 ﻿namespace Ocelot.UnitTests.Configuration.Validation
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Threading.Tasks;
     using FluentValidation.Results;
     using Microsoft.AspNetCore.Authentication;
     using Microsoft.AspNetCore.Http;
@@ -11,6 +8,9 @@
     using Ocelot.Configuration.Validator;
     using Ocelot.Requester;
     using Shouldly;
+    using System;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
     using TestStack.BDDfy;
     using Xunit;
 
@@ -305,6 +305,71 @@
                 .BDDfy();
         }
 
+        [Theory]
+        [InlineData("1.0")]
+        [InlineData("1.1")]
+        [InlineData("2.0")]
+        [InlineData("1,0")]
+        [InlineData("1,1")]
+        [InlineData("2,0")]
+        [InlineData("1")]
+        [InlineData("2")]
+        [InlineData("")]
+        [InlineData(null)]
+        public void should_be_valid_re_route_using_downstream_http_version(string version)
+        {
+            var fileReRoute = new FileReRoute
+            {
+                DownstreamPathTemplate = "/test",
+                UpstreamPathTemplate = "/test",
+                DownstreamHostAndPorts = new List<FileHostAndPort>
+                {
+                    new FileHostAndPort
+                    {
+                        Host = "localhost",
+                        Port = 5000,
+                    },
+                },
+                DownstreamHttpVersion = version,
+            };
+
+            this.Given(_ => GivenThe(fileReRoute))
+                .When(_ => WhenIValidate())
+                .Then(_ => ThenTheResultIsValid())
+                .BDDfy();
+        }
+
+        [Theory]
+        [InlineData("retg1.1")]
+        [InlineData("re2.0")]
+        [InlineData("1,0a")]
+        [InlineData("a1,1")]
+        [InlineData("12,0")]
+        [InlineData("asdf")]
+        public void should_be_invalid_re_route_using_downstream_http_version(string version)
+        {
+            var fileReRoute = new FileReRoute
+            {
+                DownstreamPathTemplate = "/test",
+                UpstreamPathTemplate = "/test",
+                DownstreamHostAndPorts = new List<FileHostAndPort>
+                {
+                    new FileHostAndPort
+                    {
+                        Host = "localhost",
+                        Port = 5000,
+                    },
+                },
+                DownstreamHttpVersion = version,
+            };
+
+            this.Given(_ => GivenThe(fileReRoute))
+                .When(_ => WhenIValidate())
+                .Then(_ => ThenTheResultIsInvalid())
+                .And(_ => ThenTheErrorsContains("'Downstream Http Version' is not in the correct format."))
+                .BDDfy();
+        }
+
         private void GivenAnAuthProvider(string key)
         {
             var schemes = new List<AuthenticationScheme>
@@ -342,7 +407,7 @@
             _result.Errors.ShouldContain(x => x.ErrorMessage == expected);
         }
 
-        class FakeAutheHandler : IAuthenticationHandler
+        private class FakeAutheHandler : IAuthenticationHandler
         {
             public Task InitializeAsync(AuthenticationScheme scheme, HttpContext context)
             {

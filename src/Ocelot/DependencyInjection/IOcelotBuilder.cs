@@ -1,8 +1,11 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Ocelot.Middleware.Multiplexer;
 using System;
 using System.Net.Http;
-using Ocelot.Middleware.Multiplexer;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
+using Ocelot.Configuration;
+using Ocelot.LoadBalancer.LoadBalancers;
+using Ocelot.ServiceDiscovery.Providers;
 
 namespace Ocelot.DependencyInjection
 {
@@ -14,13 +17,34 @@ namespace Ocelot.DependencyInjection
 
         IMvcCoreBuilder MvcCoreBuilder { get; }
 
+        IOcelotBuilder AddDelegatingHandler(Type type, bool global = false);
+
         IOcelotBuilder AddDelegatingHandler<T>(bool global = false)
             where T : DelegatingHandler;
 
-        IOcelotBuilder AddSingletonDefinedAggregator<T>() 
+        IOcelotBuilder AddSingletonDefinedAggregator<T>()
             where T : class, IDefinedAggregator;
 
-        IOcelotBuilder AddTransientDefinedAggregator<T>() 
+        IOcelotBuilder AddTransientDefinedAggregator<T>()
             where T : class, IDefinedAggregator;
+
+        IOcelotBuilder AddCustomLoadBalancer<T>()
+            where T : ILoadBalancer, new();
+        
+        IOcelotBuilder AddCustomLoadBalancer<T>(Func<T> loadBalancerFactoryFunc)
+            where T : ILoadBalancer;
+
+        IOcelotBuilder AddCustomLoadBalancer<T>(Func<IServiceProvider, T> loadBalancerFactoryFunc)
+            where T : ILoadBalancer;
+
+        IOcelotBuilder AddCustomLoadBalancer<T>(
+            Func<DownstreamReRoute, IServiceDiscoveryProvider, T> loadBalancerFactoryFunc)
+            where T : ILoadBalancer;
+
+        IOcelotBuilder AddCustomLoadBalancer<T>(
+            Func<IServiceProvider, DownstreamReRoute, IServiceDiscoveryProvider, T> loadBalancerFactoryFunc)
+            where T : ILoadBalancer;
+
+        IOcelotBuilder AddConfigPlaceholders();
     }
 }

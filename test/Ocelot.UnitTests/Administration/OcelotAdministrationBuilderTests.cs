@@ -1,15 +1,16 @@
 namespace Ocelot.UnitTests.Administration
 {
-    using System;
-    using System.Collections.Generic;
     using IdentityServer4.AccessTokenValidation;
     using Microsoft.AspNetCore.Hosting;
-    using Microsoft.AspNetCore.Hosting.Internal;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.DependencyInjection;
+    using Moq;
     using Ocelot.Administration;
     using Ocelot.DependencyInjection;
     using Shouldly;
+    using System;
+    using System.Collections.Generic;
+    using System.Reflection;
     using TestStack.BDDfy;
     using Xunit;
 
@@ -25,15 +26,25 @@ namespace Ocelot.UnitTests.Administration
         {
             _configRoot = new ConfigurationRoot(new List<IConfigurationProvider>());
             _services = new ServiceCollection();
-            _services.AddSingleton<IHostingEnvironment, HostingEnvironment>();
+            _services.AddSingleton<IWebHostEnvironment>(GetHostingEnvironment());
             _services.AddSingleton(_configRoot);
+        }
+        
+        private IWebHostEnvironment GetHostingEnvironment()
+        {
+            var environment = new Mock<IWebHostEnvironment>();
+            environment
+                .Setup(e => e.ApplicationName)
+                .Returns(typeof(OcelotAdministrationBuilderTests).GetTypeInfo().Assembly.GetName().Name);
+
+            return environment.Object;
         }
 
         //keep
         [Fact]
         public void should_set_up_administration_with_identity_server_options()
         {
-            Action<IdentityServerAuthenticationOptions> options = o => {};
+            Action<IdentityServerAuthenticationOptions> options = o => { };
 
             this.Given(x => WhenISetUpOcelotServices())
                 .When(x => WhenISetUpAdministration(options))
@@ -88,4 +99,3 @@ namespace Ocelot.UnitTests.Administration
         }
     }
 }
-

@@ -1,15 +1,16 @@
 ﻿namespace Ocelot.Configuration.Validator
 {
-    using FluentValidation;
-    using File;
     using Errors;
+    using File;
+    using FluentValidation;
+    using Microsoft.Extensions.DependencyInjection;
     using Responses;
+    using ServiceDiscovery;
+    using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text.RegularExpressions;
     using System.Threading.Tasks;
-    using System;
-    using Microsoft.Extensions.DependencyInjection;
-    using ServiceDiscovery;
 
     public class FileConfigurationFluentValidator : AbstractValidator<FileConfiguration>, IConfigurationValidator
     {
@@ -21,8 +22,8 @@
                 .GetServices<ServiceDiscoveryFinderDelegate>()
                 .ToList();
 
-            RuleFor(configuration => configuration.ReRoutes)
-                .SetCollectionValidator(reRouteFluentValidator);
+            RuleForEach(configuration => configuration.ReRoutes)
+                .SetValidator(reRouteFluentValidator);
 
             RuleFor(configuration => configuration.GlobalConfiguration)
                 .SetValidator(fileGlobalConfigurationFluentValidator);
@@ -34,6 +35,10 @@
             RuleForEach(configuration => configuration.ReRoutes)
                 .Must((config, reRoute) => HaveServiceDiscoveryProviderRegistered(reRoute, config.GlobalConfiguration.ServiceDiscoveryProvider))
                 .WithMessage((config, reRoute) => $"Unable to start Ocelot, errors are: Unable to start Ocelot because either a ReRoute or GlobalConfiguration are using ServiceDiscoveryOptions but no ServiceDiscoveryFinderDelegate has been registered in dependency injection container. Are you missing a package like Ocelot.Provider.Consul and services.AddConsul() or Ocelot.Provider.Eureka and services.AddEureka()?");
+
+            RuleForEach(configuration => configuration.ReRoutes)
+                .Must((config, reRoute) => IsPlaceholderNotDuplicatedIn(reRoute.UpstreamPathTemplate))
+                .WithMessage((config, reRoute) => $"{nameof(reRoute)} {reRoute.UpstreamPathTemplate} has duplicated placeholder");
 
             RuleFor(configuration => configuration.GlobalConfiguration.ServiceDiscoveryProvider)
                 .Must(HaveServiceDiscoveryProviderRegistered)
@@ -73,11 +78,11 @@
 
         private bool HaveServiceDiscoveryProviderRegistered(FileServiceDiscoveryProvider serviceDiscoveryProvider)
         {
-            if(serviceDiscoveryProvider == null)
+            if (serviceDiscoveryProvider == null)
             {
                 return true;
             }
-            
+
             if (serviceDiscoveryProvider?.Type?.ToLower() == "servicefabric")
             {
                 return true;
@@ -109,6 +114,14 @@
             return reRoutesForAggregate.Count() == fileAggregateReRoute.ReRouteKeys.Count;
         }
 
+        private bool IsPlaceholderNotDuplicatedIn(string upstreamPathTemplate)
+        {
+            Regex regExPlaceholder = new Regex("{[^}]+}");
+            var matches = regExPlaceholder.Matches(upstreamPathTemplate);
+            var upstreamPathPlaceholders = matches.Select(m => m.Value);
+            return upstreamPathPlaceholders.Count() == upstreamPathPlaceholders.Distinct().Count();
+        }
+
         private static bool DoesNotContainReRoutesWithSpecificRequestIdKeys(FileAggregateReRoute fileAggregateReRoute,
             List<FileReRoute> reRoutes)
         {
@@ -122,7 +135,7 @@
         {
             var matchingReRoutes = reRoutes
                 .Where(r => r.UpstreamPathTemplate == reRoute.UpstreamPathTemplate
-                            && (r.UpstreamHost != reRoute.UpstreamHost || reRoute.UpstreamHost == null))
+                            && r.UpstreamHost == reRoute.UpstreamHost)
                 .ToList();
 
             if (matchingReRoutes.Count == 1)

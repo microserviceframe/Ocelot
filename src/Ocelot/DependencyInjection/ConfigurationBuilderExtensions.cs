@@ -1,15 +1,15 @@
 namespace Ocelot.DependencyInjection
 {
-    using System;
-    using System.Collections.Generic;
+    using Configuration.File;
+    using Microsoft.AspNetCore.Hosting;
     using Microsoft.Extensions.Configuration;
     using Microsoft.Extensions.Configuration.Memory;
+    using Newtonsoft.Json;
+    using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Text.RegularExpressions;
-    using Configuration.File;
-    using Newtonsoft.Json;
-    using Microsoft.AspNetCore.Hosting;
 
     public static class ConfigurationBuilderExtensions
     {
@@ -29,18 +29,18 @@ namespace Ocelot.DependencyInjection
             return builder;
         }
 
-        public static IConfigurationBuilder AddOcelot(this IConfigurationBuilder builder, IHostingEnvironment env)
+        public static IConfigurationBuilder AddOcelot(this IConfigurationBuilder builder, IWebHostEnvironment env)
         {
             return builder.AddOcelot(".", env);
         }
 
-        public static IConfigurationBuilder AddOcelot(this IConfigurationBuilder builder, string folder, IHostingEnvironment env)
+        public static IConfigurationBuilder AddOcelot(this IConfigurationBuilder builder, string folder, IWebHostEnvironment env)
         {
             const string primaryConfigFile = "ocelot.json";
 
             const string globalConfigFile = "ocelot.global.json";
 
-            const string subConfigPattern = @"^ocelot\.[a-zA-Z0-9]+\.json$";
+            const string subConfigPattern = @"^ocelot\.(.*?)\.json$";
 
             string excludeConfigName = env?.EnvironmentName != null ? $"ocelot.{env.EnvironmentName}.json" : string.Empty;
 
@@ -55,13 +55,13 @@ namespace Ocelot.DependencyInjection
 
             foreach (var file in files)
             {
-                if(files.Count > 1 && file.Name.Equals(primaryConfigFile, StringComparison.OrdinalIgnoreCase))
+                if (files.Count > 1 && file.Name.Equals(primaryConfigFile, StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
 
                 var lines = File.ReadAllText(file.FullName);
-                
+
                 var config = JsonConvert.DeserializeObject<FileConfiguration>(lines);
 
                 if (file.Name.Equals(globalConfigFile, StringComparison.OrdinalIgnoreCase))

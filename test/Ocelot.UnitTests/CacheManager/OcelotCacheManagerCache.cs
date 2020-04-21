@@ -1,9 +1,9 @@
 ﻿namespace Ocelot.UnitTests.CacheManager
 {
-    using System;
     using global::CacheManager.Core;
     using Moq;
     using Ocelot.Cache.CacheManager;
+    using System;
     using Shouldly;
     using TestStack.BDDfy;
     using Xunit;

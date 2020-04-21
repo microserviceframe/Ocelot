@@ -1,37 +1,40 @@
 ﻿namespace Ocelot.UnitTests.Request.Mapper
 {
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Net.Http;
-
     using Microsoft.AspNetCore.Http;
-    using Microsoft.AspNetCore.Http.Internal;
     using Microsoft.Extensions.Primitives;
     using Ocelot.Request.Mapper;
     using Ocelot.Responses;
-    using TestStack.BDDfy;
-    using Xunit;
     using Shouldly;
     using System;
+    using System.Collections.Generic;
     using System.IO;
-    using System.Text;
+    using System.Linq;
+    using System.Net.Http;
     using System.Security.Cryptography;
+    using System.Text;
     using System.Threading.Tasks;
+    using Ocelot.Configuration;
+    using Ocelot.Configuration.Builder;
+    using TestStack.BDDfy;
+    using Xunit;
 
     public class RequestMapperTests
     {
-        readonly HttpRequest _inputRequest;
+        private readonly HttpContext _httpContext;
+        private readonly HttpRequest _inputRequest;
 
-        readonly RequestMapper _requestMapper;
+        private readonly RequestMapper _requestMapper;
 
-        Response<HttpRequestMessage> _mappedRequest;
+        private Response<HttpRequestMessage> _mappedRequest;
 
-        List<KeyValuePair<string, StringValues>> _inputHeaders = null;
+        private List<KeyValuePair<string, StringValues>> _inputHeaders = null;
+
+        private DownstreamReRoute _downstreamReRoute;
 
         public RequestMapperTests()
         {
-            _inputRequest = new DefaultHttpRequest(new DefaultHttpContext());
-
+            _httpContext = new DefaultHttpContext();
+            _inputRequest = _httpContext.Request;
             _requestMapper = new RequestMapper();
         }
 
@@ -48,6 +51,7 @@
                 .And(_ => GivenTheInputRequestHasHost(host))
                 .And(_ => GivenTheInputRequestHasPath(path))
                 .And(_ => GivenTheInputRequestHasQueryString(queryString))
+                .And(_ => GivenTheDownstreamReRoute())
                 .When(_ => WhenMapped())
                 .Then(_ => ThenNoErrorIsReturned())
                 .And(_ => ThenTheMappedRequestHasUri(expectedUri))
@@ -77,9 +81,25 @@
         {
             this.Given(_ => GivenTheInputRequestHasMethod(method))
                 .And(_ => GivenTheInputRequestHasAValidUri())
+                .And(_ => GivenTheDownstreamReRoute())
                 .When(_ => WhenMapped())
                 .Then(_ => ThenNoErrorIsReturned())
                 .And(_ => ThenTheMappedRequestHasMethod(method))
+                .BDDfy();
+        }
+
+        [Theory]
+        [InlineData("", "GET")]
+        [InlineData(null, "GET")]
+        [InlineData("POST", "POST")]
+        public void Should_use_downstream_reroute_method_if_set(string input, string expected)
+        {
+            this.Given(_ => GivenTheInputRequestHasMethod("GET"))
+                .And(_ => GivenTheDownstreamReRouteMethodIs(input))
+                .And(_ => GivenTheInputRequestHasAValidUri())
+                .When(_ => WhenMapped())
+                .Then(_ => ThenNoErrorIsReturned())
+                .And(_ => ThenTheMappedRequestHasMethod(expected))
                 .BDDfy();
         }
 
@@ -89,6 +109,7 @@
             this.Given(_ => GivenTheInputRequestHasHeaders())
                 .And(_ => GivenTheInputRequestHasMethod("GET"))
                 .And(_ => GivenTheInputRequestHasAValidUri())
+                .And(_ => GivenTheDownstreamReRoute())
                 .When(_ => WhenMapped())
                 .Then(_ => ThenNoErrorIsReturned())
                 .And(_ => ThenTheMappedRequestHasEachHeader())
@@ -101,6 +122,7 @@
             this.Given(_ => GivenTheInputRequestHasNoHeaders())
                 .And(_ => GivenTheInputRequestHasMethod("GET"))
                 .And(_ => GivenTheInputRequestHasAValidUri())
+                .And(_ => GivenTheDownstreamReRoute())
                 .When(_ => WhenMapped())
                 .Then(_ => ThenNoErrorIsReturned())
                 .And(_ => ThenTheMappedRequestHasNoHeaders())
@@ -113,6 +135,7 @@
             this.Given(_ => GivenTheInputRequestHasContent("This is my content"))
                 .And(_ => GivenTheInputRequestHasMethod("GET"))
                 .And(_ => GivenTheInputRequestHasAValidUri())
+                .And(_ => GivenTheDownstreamReRoute())
                 .When(_ => WhenMapped())
                 .Then(_ => ThenNoErrorIsReturned())
                 .And(_ => ThenTheMappedRequestHasContent("This is my content"))
@@ -125,6 +148,7 @@
             this.Given(_ => GivenTheInputRequestHasNullContent())
                 .And(_ => GivenTheInputRequestHasMethod("GET"))
                 .And(_ => GivenTheInputRequestHasAValidUri())
+                .And(_ => GivenTheDownstreamReRoute())
                 .When(_ => WhenMapped())
                 .Then(_ => ThenNoErrorIsReturned())
                 .And(_ => ThenTheMappedRequestHasNoContent())
@@ -137,6 +161,7 @@
             this.Given(_ => GivenTheInputRequestHasNoContentType())
                 .And(_ => GivenTheInputRequestHasMethod("GET"))
                 .And(_ => GivenTheInputRequestHasAValidUri())
+                .And(_ => GivenTheDownstreamReRoute())
                 .When(_ => WhenMapped())
                 .Then(_ => ThenNoErrorIsReturned())
                 .And(_ => ThenTheMappedRequestHasNoContent())
@@ -149,20 +174,11 @@
             this.Given(_ => GivenTheInputRequestHasNoContentLength())
                 .And(_ => GivenTheInputRequestHasMethod("GET"))
                 .And(_ => GivenTheInputRequestHasAValidUri())
+                .And(_ => GivenTheDownstreamReRoute())
                 .When(_ => WhenMapped())
                 .Then(_ => ThenNoErrorIsReturned())
                 .And(_ => ThenTheMappedRequestHasNoContent())
                 .BDDfy();
-        }
-
-        private void GivenTheInputRequestHasNoContentLength()
-        {
-            _inputRequest.ContentLength = null;
-        }
-
-        private void GivenTheInputRequestHasNoContentType()
-        {
-            _inputRequest.ContentType = null;
         }
 
         [Fact]
@@ -184,6 +200,7 @@
                 .And(_ => GivenTheContentMD5Is(md5bytes))
                 .And(_ => GivenTheInputRequestHasMethod("GET"))
                 .And(_ => GivenTheInputRequestHasAValidUri())
+                .And(_ => GivenTheDownstreamReRoute())
                 .When(_ => WhenMapped())
                 .Then(_ => ThenNoErrorIsReturned())
                 .And(_ => ThenTheMappedRequestHasContentTypeHeader("application/json"))
@@ -205,14 +222,39 @@
                 .And(_ => GivenTheContentTypeIs("application/json"))
                 .And(_ => GivenTheInputRequestHasMethod("POST"))
                 .And(_ => GivenTheInputRequestHasAValidUri())
+                .And(_ => GivenTheDownstreamReRoute())
                 .When(_ => WhenMapped())
                 .Then(_ => ThenNoErrorIsReturned())
                 .And(_ => ThenTheMappedRequestHasContentTypeHeader("application/json"))
                 .And(_ => ThenTheMappedRequestHasContentSize("This is my content".Length))
                 .And(_ => ThenTheOtherContentTypeHeadersAreNotMapped())
-                .BDDfy();           
+                .BDDfy();
         }
-        
+
+        private void GivenTheDownstreamReRouteMethodIs(string input)
+        {
+            _downstreamReRoute = new DownstreamReRouteBuilder()
+                .WithDownStreamHttpMethod(input)
+                .WithDownstreamHttpVersion(new Version("1.1")).Build();
+        }
+
+        private void GivenTheDownstreamReRoute()
+        {
+            _downstreamReRoute = new DownstreamReRouteBuilder()
+                .WithDownstreamHttpVersion(new Version("1.1")).Build();
+        }
+
+        private void GivenTheInputRequestHasNoContentLength()
+        {
+            _inputRequest.ContentLength = null;
+        }
+
+        private void GivenTheInputRequestHasNoContentType()
+        {
+            _inputRequest.ContentType = null;
+        }
+
+
         private void ThenTheContentHeadersAreNotAddedToNonContentHeaders()
         {
             _mappedRequest.Data.Headers.ShouldNotContain(x => x.Key == "Content-Disposition");
@@ -381,7 +423,7 @@
 
         private async Task WhenMapped()
         {
-            _mappedRequest = await _requestMapper.Map(_inputRequest);
+            _mappedRequest = await _requestMapper.Map(_inputRequest, _downstreamReRoute);
         }
 
         private void ThenNoErrorIsReturned()
@@ -407,12 +449,12 @@
         private void ThenTheMappedRequestHasEachHeader()
         {
             _mappedRequest.Data.Headers.Count().ShouldBe(_inputHeaders.Count);
-            foreach(var header in _mappedRequest.Data.Headers)
+            foreach (var header in _mappedRequest.Data.Headers)
             {
                 var inputHeader = _inputHeaders.First(h => h.Key == header.Key);
                 inputHeader.ShouldNotBeNull();
                 inputHeader.Value.Count().ShouldBe(header.Value.Count());
-                foreach(var inputHeaderValue in inputHeader.Value)
+                foreach (var inputHeaderValue in inputHeader.Value)
                 {
                     header.Value.Any(v => v == inputHeaderValue);
                 }

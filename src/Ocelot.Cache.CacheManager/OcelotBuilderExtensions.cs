@@ -1,12 +1,12 @@
 ﻿namespace Ocelot.Cache.CacheManager
 {
-    using System;
     using Configuration;
     using Configuration.File;
     using DependencyInjection;
     using global::CacheManager.Core;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.DependencyInjection.Extensions;
+    using System;
 
     public static class OcelotBuilderExtensions
     {
@@ -33,6 +33,10 @@
             builder.Services.RemoveAll(typeof(IOcelotCache<FileConfiguration>));
             builder.Services.AddSingleton<ICacheManager<FileConfiguration>>(fileConfigCacheManagerOutputCache);
             builder.Services.AddSingleton<IOcelotCache<FileConfiguration>>(fileConfigCacheManager);
+
+            builder.Services.RemoveAll(typeof(ICacheKeyGenerator));
+            builder.Services.AddSingleton<ICacheKeyGenerator, CacheKeyGenerator>();
+
             return builder;
         }
     }

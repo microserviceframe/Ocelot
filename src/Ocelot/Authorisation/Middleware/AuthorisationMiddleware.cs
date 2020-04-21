@@ -1,12 +1,10 @@
 ﻿namespace Ocelot.Authorisation.Middleware
 {
-    using System.Collections.Generic;
-    using System.Threading.Tasks;
-    using Errors;
-    using Ocelot.Middleware;
-    using Logging;
-    using Responses;
     using Configuration;
+    using Logging;
+    using Ocelot.Middleware;
+    using Responses;
+    using System.Threading.Tasks;
 
     public class AuthorisationMiddleware : OcelotMiddleware
     {
@@ -18,7 +16,7 @@
             IClaimsAuthoriser claimsAuthoriser,
             IScopesAuthoriser scopesAuthoriser,
             IOcelotLoggerFactory loggerFactory)
-            :base(loggerFactory.CreateLogger<AuthorisationMiddleware>())
+            : base(loggerFactory.CreateLogger<AuthorisationMiddleware>())
         {
             _next = next;
             _claimsAuthoriser = claimsAuthoriser;
@@ -27,7 +25,7 @@
 
         public async Task Invoke(DownstreamContext context)
         {
-            if (IsAuthenticatedRoute(context.DownstreamReRoute))
+            if (!IsOptionsHttpMethod(context) && IsAuthenticatedRoute(context.DownstreamReRoute))
             {
                 Logger.LogInformation("route is authenticated scopes must be checked");
 
@@ -54,11 +52,11 @@
                 }
             }
 
-            if (IsAuthorisedRoute(context.DownstreamReRoute))
+            if (!IsOptionsHttpMethod(context) && IsAuthorisedRoute(context.DownstreamReRoute))
             {
                 Logger.LogInformation("route is authorised");
 
-                var authorised = _claimsAuthoriser.Authorise(context.HttpContext.User, context.DownstreamReRoute.RouteClaimsRequirement);
+                var authorised = _claimsAuthoriser.Authorise(context.HttpContext.User, context.DownstreamReRoute.RouteClaimsRequirement, context.TemplatePlaceholderNameAndValues);
 
                 if (authorised.IsError)
                 {
@@ -100,6 +98,11 @@
         private static bool IsAuthorisedRoute(DownstreamReRoute reRoute)
         {
             return reRoute.IsAuthorised;
+        }
+
+        private static bool IsOptionsHttpMethod(DownstreamContext context)
+        {
+            return context.HttpContext.Request.Method.ToUpper() == "OPTIONS";
         }
     }
 }

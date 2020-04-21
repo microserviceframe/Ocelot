@@ -1,15 +1,14 @@
 Getting Started
 ===============
 
-Ocelot is designed to work with .NET Core only and is currently 
-built to netstandard2.0. `This <https://docs.microsoft.com/en-us/dotnet/articles/standard/library>`_ documentation may prove helpful when working out if Ocelot would be suitable for you.
+Ocelot is designed to work with .NET Core only and is currently on netcoreapp3.1.
 
-.NET Core 2.1
+.NET Core 3.1
 ^^^^^^^^^^^^^
 
 **Install NuGet package**
 
-Install Ocelot and it's dependencies using nuget. You will need to create a netstandard2.0 project and bring the package into it. Then follow the Startup below and :doc:`../features/configuration` sections
+Install Ocelot and it's dependencies using nuget. You will need to create a netcoreapp3.1 project and bring the package into it. Then follow the Startup below and :doc:`../features/configuration` sections
 to get up and running.
 
    ``Install-Package Ocelot``
@@ -29,6 +28,30 @@ The following is a very basic ocelot.json. It won't do anything but should get O
         }
     }
 
+If you want some example that actually does something use the following:
+
+.. code-block:: json
+
+    {
+        "ReRoutes": [
+            {
+            "DownstreamPathTemplate": "/todos/{id}",
+            "DownstreamScheme": "https",
+            "DownstreamHostAndPorts": [
+                {
+                    "Host": "jsonplaceholder.typicode.com",
+                    "Port": 443
+                }
+            ],
+            "UpstreamPathTemplate": "/todos/{id}",
+            "UpstreamHttpMethod": [ "Get" ]
+            }
+        ],
+        "GlobalConfiguration": {
+            "BaseUrl": "https://localhost:5000"
+        }
+    }
+
 The most important thing to note here is BaseUrl. Ocelot needs to know the URL it is running under
 in order to do Header find & replace and for certain administration configurations. When setting this URL it should be the external URL that clients will see Ocelot running on e.g. If you are running containers Ocelot might run on the url http://123.12.1.1:6543 but has something like nginx in front of it responding on https://api.mybusiness.com. In this case the Ocelot base url should be https://api.mybusiness.com. 
 
@@ -42,11 +65,20 @@ AddOcelot() (adds ocelot services), UseOcelot().Wait() (sets up all the Ocelot m
 
 .. code-block:: csharp
 
-    public class Program
+    using System.IO;
+    using Microsoft.AspNetCore.Hosting;
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Extensions.Hosting;
+    using Ocelot.DependencyInjection;
+    using Ocelot.Middleware;
+
+    namespace OcelotBasic
     {
-        public static void Main(string[] args)
+        public class Program
         {
-             new WebHostBuilder()
+            public static void Main(string[] args)
+            {
+                new WebHostBuilder()
                 .UseKestrel()
                 .UseContentRoot(Directory.GetCurrentDirectory())
                 .ConfigureAppConfiguration((hostingContext, config) =>
@@ -71,9 +103,11 @@ AddOcelot() (adds ocelot services), UseOcelot().Wait() (sets up all the Ocelot m
                     app.UseOcelot().Wait();
                 })
                 .Build()
-                .Run(); 
+                .Run();
+            }
         }
     }
+
     
  **Note:** When using ASP.NET Core 2.2 and you want to use In-Process hosting, replace **.UseIISIntegration()** with **.UseIIS()**, otherwise you'll get startup errors.
 

@@ -1,25 +1,25 @@
 ﻿namespace Ocelot.UnitTests.Configuration.Validation
 {
-    using System.Collections.Generic;
-    using System.Security.Claims;
-    using System.Text.Encodings.Web;
-    using System.Threading.Tasks;
     using Microsoft.AspNetCore.Authentication;
+    using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Options;
     using Moq;
     using Ocelot.Configuration.File;
     using Ocelot.Configuration.Validator;
-    using Ocelot.Responses;
-    using Shouldly;
-    using TestStack.BDDfy;
-    using Xunit;
-    using Microsoft.Extensions.DependencyInjection;
     using Ocelot.Requester;
-    using Requester;
+    using Ocelot.Responses;
+    using Ocelot.ServiceDiscovery;
     using Ocelot.ServiceDiscovery.Providers;
     using Ocelot.Values;
-    using Ocelot.ServiceDiscovery;
+    using Requester;
+    using Shouldly;
+    using System.Collections.Generic;
+    using System.Security.Claims;
+    using System.Text.Encodings.Web;
+    using System.Threading.Tasks;
+    using TestStack.BDDfy;
+    using Xunit;
 
     public class FileConfigurationFluentValidatorTests
     {
@@ -57,6 +57,7 @@
                 {
                     ServiceDiscoveryProvider = new FileServiceDiscoveryProvider
                     {
+                        Scheme = "https",
                         Host = "localhost",
                         Type = "ServiceFabric",
                         Port = 8500
@@ -90,6 +91,7 @@
                 {
                     ServiceDiscoveryProvider = new FileServiceDiscoveryProvider
                     {
+                        Scheme = "https",
                         Host = "localhost",
                         Type = "FakeServiceDiscoveryProvider",
                         Port = 8500
@@ -113,6 +115,7 @@
                 {
                     ServiceDiscoveryProvider = new FileServiceDiscoveryProvider
                     {
+                        Scheme = "https",
                         Host = "localhost",
                         Type = "FakeServiceDiscoveryProvider",
                         Port = 8500
@@ -126,7 +129,7 @@
                 .Then(x => x.ThenTheResultIsValid())
                 .BDDfy();
         }
-        
+
         [Fact]
         public void configuration_is_invalid_if_service_discovery_options_specified_but_no_service_discovery_handler()
         {
@@ -147,6 +150,7 @@
                 {
                     ServiceDiscoveryProvider = new FileServiceDiscoveryProvider
                     {
+                        Scheme = "https",
                         Host = "localhost",
                         Type = "FakeServiceDiscoveryProvider",
                         Port = 8500
@@ -171,6 +175,7 @@
                 {
                     ServiceDiscoveryProvider = new FileServiceDiscoveryProvider
                     {
+                        Scheme = "https",
                         Host = "localhost",
                         Type = "FakeServiceDiscoveryProvider",
                         Port = 8500
@@ -206,6 +211,7 @@
                 {
                     ServiceDiscoveryProvider = new FileServiceDiscoveryProvider
                     {
+                        Scheme = "https",
                         Host = "localhost",
                         Type = "consul",
                         Port = 8500
@@ -300,7 +306,7 @@
                 .Then(x => x.ThenTheResultIsValid())
                 .BDDfy();
         }
-        
+
         [Fact]
         public void configuration_is_invalid_if_qos_options_specified_but_no_qos_handler()
         {
@@ -1023,7 +1029,7 @@
                                     Host = "bb.co.uk"
                                 }
                             },
-                            UpstreamHost = "host1"
+                            UpstreamHost = "host2"
                         }
                     }
             }))
@@ -1114,6 +1120,132 @@
         }
 
         [Fact]
+        public void configuration_is_not_valid_with_duplicate_reroutes_with_duplicated_upstreamhosts()
+        {
+            this.Given(x => x.GivenAConfiguration(new FileConfiguration
+            {
+                ReRoutes = new List<FileReRoute>
+                {
+                    new FileReRoute
+                    {
+                        DownstreamPathTemplate = "/api/products/",
+                        UpstreamPathTemplate = "/asdf/",
+                        DownstreamHostAndPorts = new List<FileHostAndPort>
+                        {
+                            new FileHostAndPort
+                            {
+                                Host = "bbc.co.uk",
+                            }
+                        },
+                        UpstreamHttpMethod = new List<string>(),
+                        UpstreamHost = "upstreamhost"
+                    },
+                    new FileReRoute
+                    {
+                        DownstreamPathTemplate = "/www/test/",
+                        UpstreamPathTemplate = "/asdf/",
+                        DownstreamHostAndPorts = new List<FileHostAndPort>
+                        {
+                            new FileHostAndPort
+                            {
+                                Host = "bbc.co.uk",
+                            }
+                        },
+                        UpstreamHttpMethod = new List<string>(),
+                        UpstreamHost = "upstreamhost"
+                    }
+                }
+            }))
+                .When(x => x.WhenIValidateTheConfiguration())
+                .Then(x => x.ThenTheResultIsNotValid())
+                 .And(x => x.ThenTheErrorMessageAtPositionIs(0, "reRoute /asdf/ has duplicate"))
+                .BDDfy();
+        }
+
+        [Fact]
+        public void configuration_is_valid_with_duplicate_reroutes_but_different_upstreamhosts()
+        {
+            this.Given(x => x.GivenAConfiguration(new FileConfiguration
+            {
+                ReRoutes = new List<FileReRoute>
+                {
+                    new FileReRoute
+                    {
+                        DownstreamPathTemplate = "/api/products/",
+                        UpstreamPathTemplate = "/asdf/",
+                        DownstreamHostAndPorts = new List<FileHostAndPort>
+                        {
+                            new FileHostAndPort
+                            {
+                                Host = "bbc.co.uk",
+                            }
+                        },
+                        UpstreamHttpMethod = new List<string>(),
+                        UpstreamHost = "upstreamhost111"
+                    },
+                    new FileReRoute
+                    {
+                        DownstreamPathTemplate = "/www/test/",
+                        UpstreamPathTemplate = "/asdf/",
+                        DownstreamHostAndPorts = new List<FileHostAndPort>
+                        {
+                            new FileHostAndPort
+                            {
+                                Host = "bbc.co.uk",
+                            }
+                        },
+                        UpstreamHttpMethod = new List<string>(),
+                        UpstreamHost = "upstreamhost222"
+                    }
+                }
+            }))
+                .When(x => x.WhenIValidateTheConfiguration())
+                .Then(x => x.ThenTheResultIsValid())
+                .BDDfy();
+        }
+
+        [Fact]
+        public void configuration_is_valid_with_duplicate_reroutes_but_one_upstreamhost_is_not_set()
+        {
+            this.Given(x => x.GivenAConfiguration(new FileConfiguration
+            {
+                ReRoutes = new List<FileReRoute>
+                {
+                    new FileReRoute
+                    {
+                        DownstreamPathTemplate = "/api/products/",
+                        UpstreamPathTemplate = "/asdf/",
+                        DownstreamHostAndPorts = new List<FileHostAndPort>
+                        {
+                            new FileHostAndPort
+                            {
+                                Host = "bbc.co.uk",
+                            }
+                        },
+                        UpstreamHttpMethod = new List<string>(),
+                        UpstreamHost = "upstreamhost"
+                    },
+                    new FileReRoute
+                    {
+                        DownstreamPathTemplate = "/www/test/",
+                        UpstreamPathTemplate = "/asdf/",
+                        DownstreamHostAndPorts = new List<FileHostAndPort>
+                        {
+                            new FileHostAndPort
+                            {
+                                Host = "bbc.co.uk",
+                            }
+                        },
+                        UpstreamHttpMethod = new List<string>()
+                    }
+                }
+            }))
+                .When(x => x.WhenIValidateTheConfiguration())
+                .Then(x => x.ThenTheResultIsValid())
+                .BDDfy();
+        }
+        
+        [Fact]
         public void configuration_is_invalid_with_invalid_rate_limit_configuration()
         {
             this.Given(x => x.GivenAConfiguration(new FileConfiguration
@@ -1197,6 +1329,7 @@
                 {
                     ServiceDiscoveryProvider = new FileServiceDiscoveryProvider
                     {
+                        Scheme = "https",
                         Type = "servicefabric",
                         Host = "localhost",
                         Port = 1234
@@ -1341,6 +1474,32 @@
                 .BDDfy();
         }
 
+        [Fact]
+        public void configuration_is_invalid_when_placeholder_is_used_twice_in_upstream_path_template()
+        {
+            this.Given(x => x.GivenAConfiguration(new FileConfiguration
+            {
+                ReRoutes = new List<FileReRoute>
+                {
+                    new FileReRoute
+                    {
+                        DownstreamPathTemplate = "/bar/{everything}",
+                        DownstreamScheme = "http",
+                        DownstreamHostAndPorts = new List<FileHostAndPort> 
+                        { 
+                            new FileHostAndPort() { Host = "a.b.cd" },
+                        },
+                        UpstreamPathTemplate = "/foo/bar/{everything}/{everything}",
+                        UpstreamHttpMethod = new List<string> { "Get" },
+                    },
+                },
+            }))
+                .When(x => x.WhenIValidateTheConfiguration())
+                .Then(x => x.ThenTheResultIsNotValid())
+                .And(x => x.ThenTheErrorMessageAtPositionIs(0, "reRoute /foo/bar/{everything}/{everything} has duplicated placeholder"))
+                .BDDfy();
+        }
+
         private void GivenAConfiguration(FileConfiguration fileConfiguration)
         {
             _fileConfiguration = fileConfiguration;
@@ -1382,7 +1541,7 @@
         private void GivenAQoSHandler()
         {
             var collection = new ServiceCollection();
-            QosDelegatingHandlerDelegate del = (a,b) => new FakeDelegatingHandler();
+            QosDelegatingHandlerDelegate del = (a, b) => new FakeDelegatingHandler();
             collection.AddSingleton<QosDelegatingHandlerDelegate>(del);
             var provider = collection.BuildServiceProvider();
             _configurationValidator = new FileConfigurationFluentValidator(provider, new ReRouteFluentValidator(_authProvider.Object, new HostAndPortValidator(), new FileQoSOptionsFluentValidator(provider)), new FileGlobalConfigurationFluentValidator(new FileQoSOptionsFluentValidator(provider)));
@@ -1391,7 +1550,7 @@
         private void GivenAServiceDiscoveryHandler()
         {
             var collection = new ServiceCollection();
-            ServiceDiscoveryFinderDelegate del = (a,b,c) => new FakeServiceDiscoveryProvider();
+            ServiceDiscoveryFinderDelegate del = (a, b, c) => new FakeServiceDiscoveryProvider();
             collection.AddSingleton<ServiceDiscoveryFinderDelegate>(del);
             var provider = collection.BuildServiceProvider();
             _configurationValidator = new FileConfigurationFluentValidator(provider, new ReRouteFluentValidator(_authProvider.Object, new HostAndPortValidator(), new FileQoSOptionsFluentValidator(provider)), new FileGlobalConfigurationFluentValidator(new FileQoSOptionsFluentValidator(provider)));

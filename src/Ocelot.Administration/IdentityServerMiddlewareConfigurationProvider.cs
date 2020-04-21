@@ -1,11 +1,10 @@
 ﻿namespace Ocelot.Administration
 {
-    using System.Threading.Tasks;
-    using Configuration;
     using Configuration.Repository;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.Extensions.DependencyInjection;
     using Ocelot.Middleware;
+    using System.Threading.Tasks;
 
     public static class IdentityServerMiddlewareConfigurationProvider
     {
@@ -28,7 +27,13 @@
                     }
 
                     app.UseAuthentication();
-                    app.UseMvc();
+                    app.UseRouting();
+                    app.UseAuthorization();
+                    app.UseEndpoints(endpoints =>
+                    {
+                        endpoints.MapDefaultControllerRoute();
+                        endpoints.MapControllers();
+                    });
                 });
             }
 

@@ -1,12 +1,12 @@
 ﻿namespace Ocelot.AcceptanceTests
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Net;
     using Configuration.File;
     using Microsoft.AspNetCore.Http;
     using Newtonsoft.Json;
     using Steeltoe.Common.Discovery;
+    using System;
+    using System.Collections.Generic;
+    using System.Net;
     using TestStack.BDDfy;
     using Xunit;
 
@@ -28,7 +28,7 @@
         {
             var eurekaPort = 8761;
             var serviceName = "product";
-            var downstreamServicePort = 50371;
+            var downstreamServicePort = RandomPortFinder.GetRandomPort();           
             var downstreamServiceOneUrl = $"http://localhost:{downstreamServicePort}";
             var fakeEurekaServiceDiscoveryUrl = $"http://localhost:{eurekaPort}";
 

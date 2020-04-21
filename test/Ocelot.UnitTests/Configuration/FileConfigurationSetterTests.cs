@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Moq;
 using Ocelot.Configuration;
 using Ocelot.Configuration.Builder;
@@ -10,11 +8,15 @@ using Ocelot.Configuration.Setter;
 using Ocelot.Errors;
 using Ocelot.Responses;
 using Shouldly;
+using System.Collections.Generic;
+using Ocelot.Configuration.ChangeTracking;
 using TestStack.BDDfy;
 using Xunit;
 
 namespace Ocelot.UnitTests.Configuration
 {
+    using System;
+
     public class FileConfigurationSetterTests
     {
         private FileConfiguration _fileConfiguration;
@@ -22,7 +24,7 @@ namespace Ocelot.UnitTests.Configuration
         private Mock<IInternalConfigurationRepository> _configRepo;
         private Mock<IInternalConfigurationCreator> _configCreator;
         private Response<IInternalConfiguration> _configuration;
-        private object _result; 
+        private object _result;
         private Mock<IFileConfigurationRepository> _repo;
 
         public FileConfigurationSetterTests()
@@ -38,7 +40,7 @@ namespace Ocelot.UnitTests.Configuration
         {
             var fileConfig = new FileConfiguration();
             var serviceProviderConfig = new ServiceProviderConfigurationBuilder().Build();
-            var config = new InternalConfiguration(new List<ReRoute>(), string.Empty, serviceProviderConfig, "asdf", new LoadBalancerOptionsBuilder().Build(), "", new QoSOptionsBuilder().Build(), new HttpHandlerOptionsBuilder().Build());
+            var config = new InternalConfiguration(new List<ReRoute>(), string.Empty, serviceProviderConfig, "asdf", new LoadBalancerOptionsBuilder().Build(), "", new QoSOptionsBuilder().Build(), new HttpHandlerOptionsBuilder().Build(), new Version("1.1"));
 
             this.Given(x => GivenTheFollowingConfiguration(fileConfig))
                 .And(x => GivenTheRepoReturns(new OkResponse()))
@@ -105,8 +107,7 @@ namespace Ocelot.UnitTests.Configuration
 
         private void ThenTheConfigurationRepositoryIsCalledCorrectly()
         {
-            _configRepo
-                .Verify(x => x.AddOrReplace(_configuration.Data), Times.Once);
+            _configRepo.Verify(x => x.AddOrReplace(_configuration.Data), Times.Once);
         }
     }
 }

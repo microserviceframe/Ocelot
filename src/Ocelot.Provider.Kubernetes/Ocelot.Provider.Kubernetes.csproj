@@ -1,9 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <RuntimeFrameworkVersion>2.0.0</RuntimeFrameworkVersion>
-    <NETStandardImplicitPackageVersion>2.0.0</NETStandardImplicitPackageVersion>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <NoPackageAnalysis>true</NoPackageAnalysis>
     <Product>Ocelot</Product>
     <Description>Provides Ocelot extensions to use kubernetes</Description>
@@ -25,11 +23,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="KubeClient" Version="2.2.4" />
+    <Compile Remove="IKubeApiClientFactory.cs" />
+    <Compile Remove="KubeApiClientFactory.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="KubeClient" Version="2.3.11" />
+    <PackageReference Include="KubeClient.Extensions.DependencyInjection" Version="2.3.11" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Ocelot\Ocelot.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.0.0" />
   </ItemGroup>
 
 </Project>

@@ -2,18 +2,17 @@
 {
     using Microsoft.Extensions.DependencyInjection;
     using ServiceDiscovery;
-    using ServiceDiscovery.Providers;
     using Steeltoe.Common.Discovery;
 
     public static class EurekaProviderFactory
     {
-        public static ServiceDiscoveryFinderDelegate Get = (provider, config, name) =>
+        public static ServiceDiscoveryFinderDelegate Get = (provider, config, reRoute) =>
         {
             var client = provider.GetService<IDiscoveryClient>();
 
             if (config.Type?.ToLower() == "eureka" && client != null)
             {
-                return new Eureka(name, client);
+                return new Eureka(reRoute.ServiceName, client);
             }
 
             return null;

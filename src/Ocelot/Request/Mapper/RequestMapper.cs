@@ -1,29 +1,31 @@
 ﻿namespace Ocelot.Request.Mapper
 {
+    using Microsoft.AspNetCore.Http;
+    using Microsoft.AspNetCore.Http.Extensions;
+    using Microsoft.Extensions.Primitives;
+    using Ocelot.Configuration;
+    using Ocelot.Responses;
     using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using System.Net.Http;
     using System.Threading.Tasks;
-    using Microsoft.AspNetCore.Http;
-    using Microsoft.AspNetCore.Http.Extensions;
-    using Microsoft.Extensions.Primitives;
-    using Ocelot.Responses;
 
     public class RequestMapper : IRequestMapper
     {
         private readonly string[] _unsupportedHeaders = { "host" };
 
-        public async Task<Response<HttpRequestMessage>> Map(HttpRequest request)
+        public async Task<Response<HttpRequestMessage>> Map(HttpRequest request, DownstreamReRoute downstreamReRoute)
         {
             try
             {
                 var requestMessage = new HttpRequestMessage()
                 {
                     Content = await MapContent(request),
-                    Method = MapMethod(request),
-                    RequestUri = MapUri(request)
+                    Method = MapMethod(request, downstreamReRoute),
+                    RequestUri = MapUri(request),
+                    Version = downstreamReRoute.DownstreamHttpVersion,
                 };
 
                 MapHeaders(request, requestMessage);
@@ -38,7 +40,7 @@
 
         private async Task<HttpContent> MapContent(HttpRequest request)
         {
-            if (request.Body == null || (request.Body.CanSeek && request.Body.Length <= 0)) 
+            if (request.Body == null || (request.Body.CanSeek && request.Body.Length <= 0))
             {
                 return null;
             }
@@ -46,10 +48,10 @@
             // Never change this to StreamContent again, I forgot it doesnt work in #464.
             var content = new ByteArrayContent(await ToByteArray(request.Body));
 
-            if(!string.IsNullOrEmpty(request.ContentType))
+            if (!string.IsNullOrEmpty(request.ContentType))
             {
                 content.Headers
-                    .TryAddWithoutValidation("Content-Type", new[] {request.ContentType});
+                    .TryAddWithoutValidation("Content-Type", new[] { request.ContentType });
             }
 
             AddHeaderIfExistsOnRequest("Content-Language", content, request);
@@ -58,21 +60,26 @@
             AddHeaderIfExistsOnRequest("Content-MD5", content, request);
             AddHeaderIfExistsOnRequest("Content-Disposition", content, request);
             AddHeaderIfExistsOnRequest("Content-Encoding", content, request);
-            
+
             return content;
         }
 
         private void AddHeaderIfExistsOnRequest(string key, HttpContent content, HttpRequest request)
         {
-            if(request.Headers.ContainsKey(key))
+            if (request.Headers.ContainsKey(key))
             {
                 content.Headers
-                    .TryAddWithoutValidation(key, request.Headers[key].ToList());  
-            }            
+                    .TryAddWithoutValidation(key, request.Headers[key].ToList());
+            }
         }
 
-        private HttpMethod MapMethod(HttpRequest request)
+        private HttpMethod MapMethod(HttpRequest request, DownstreamReRoute downstreamReRoute)
         {
+            if (!string.IsNullOrEmpty(downstreamReRoute?.DownstreamHttpMethod))
+            {
+                return new HttpMethod(downstreamReRoute.DownstreamHttpMethod);
+            }
+
             return new HttpMethod(request.Method);
         }
 
@@ -99,7 +106,7 @@
 
         private async Task<byte[]> ToByteArray(Stream stream)
         {
-            using(stream)
+            using (stream)
             {
                 using (var memStream = new MemoryStream())
                 {

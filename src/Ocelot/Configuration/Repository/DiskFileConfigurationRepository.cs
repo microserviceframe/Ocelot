@@ -1,21 +1,24 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Newtonsoft.Json;
 using Ocelot.Configuration.File;
 using Ocelot.Responses;
+using System;
+using System.Threading.Tasks;
+using Ocelot.Configuration.ChangeTracking;
 
 namespace Ocelot.Configuration.Repository
 {
     public class DiskFileConfigurationRepository : IFileConfigurationRepository
     {
+        private readonly IOcelotConfigurationChangeTokenSource _changeTokenSource;
         private readonly string _environmentFilePath;
         private readonly string _ocelotFilePath;
         private static readonly object _lock = new object();
         private const string ConfigurationFileName = "ocelot";
 
-        public DiskFileConfigurationRepository(IHostingEnvironment hostingEnvironment)
+        public DiskFileConfigurationRepository(IWebHostEnvironment hostingEnvironment, IOcelotConfigurationChangeTokenSource changeTokenSource)
         {
+            _changeTokenSource = changeTokenSource;
             _environmentFilePath = $"{AppContext.BaseDirectory}{ConfigurationFileName}{(string.IsNullOrEmpty(hostingEnvironment.EnvironmentName) ? string.Empty : ".")}{hostingEnvironment.EnvironmentName}.json";
 
             _ocelotFilePath = $"{AppContext.BaseDirectory}{ConfigurationFileName}.json";
@@ -25,7 +28,7 @@ namespace Ocelot.Configuration.Repository
         {
             string jsonConfiguration;
 
-            lock(_lock)
+            lock (_lock)
             {
                 jsonConfiguration = System.IO.File.ReadAllText(_environmentFilePath);
             }
@@ -39,7 +42,7 @@ namespace Ocelot.Configuration.Repository
         {
             string jsonConfiguration = JsonConvert.SerializeObject(fileConfiguration, Formatting.Indented);
 
-            lock(_lock)
+            lock (_lock)
             {
                 if (System.IO.File.Exists(_environmentFilePath))
                 {
@@ -56,6 +59,7 @@ namespace Ocelot.Configuration.Repository
                 System.IO.File.WriteAllText(_ocelotFilePath, jsonConfiguration);
             }
 
+            _changeTokenSource.Activate();
             return Task.FromResult<Response>(new OkResponse());
         }
     }

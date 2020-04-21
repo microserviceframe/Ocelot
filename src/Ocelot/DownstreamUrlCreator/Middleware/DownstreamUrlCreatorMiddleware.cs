@@ -1,10 +1,10 @@
-using System.Threading.Tasks;
 using Ocelot.DownstreamUrlCreator.UrlTemplateReplacer;
 using Ocelot.Logging;
 using Ocelot.Middleware;
-using System;
 using Ocelot.Responses;
 using Ocelot.Values;
+using System;
+using System.Threading.Tasks;
 
 namespace Ocelot.DownstreamUrlCreator.Middleware
 {
@@ -18,7 +18,7 @@ namespace Ocelot.DownstreamUrlCreator.Middleware
         public DownstreamUrlCreatorMiddleware(OcelotRequestDelegate next,
             IOcelotLoggerFactory loggerFactory,
             IDownstreamPathPlaceholderReplacer replacer)
-                :base(loggerFactory.CreateLogger<DownstreamUrlCreatorMiddleware>())
+                : base(loggerFactory.CreateLogger<DownstreamUrlCreatorMiddleware>())
         {
             _next = next;
             _replacer = replacer;
@@ -37,7 +37,10 @@ namespace Ocelot.DownstreamUrlCreator.Middleware
                 return;
             }
 
-            context.DownstreamRequest.Scheme = context.DownstreamReRoute.DownstreamScheme;
+            if (!string.IsNullOrEmpty(context.DownstreamReRoute.DownstreamScheme))
+            {
+                context.DownstreamRequest.Scheme = context.DownstreamReRoute.DownstreamScheme;
+            }
 
             if (ServiceFabricRequest(context))
             {
@@ -49,7 +52,7 @@ namespace Ocelot.DownstreamUrlCreator.Middleware
             {
                 var dsPath = response.Data;
 
-                if(ContainsQueryString(dsPath))
+                if (ContainsQueryString(dsPath))
                 {
                     context.DownstreamRequest.AbsolutePath = GetPath(dsPath);
 
@@ -115,7 +118,7 @@ namespace Ocelot.DownstreamUrlCreator.Middleware
 
         private (string path, string query) CreateServiceFabricUri(DownstreamContext context, Response<DownstreamPath> dsPath)
         {
-            var query = context.DownstreamRequest.Query;           
+            var query = context.DownstreamRequest.Query;
             var serviceName = _replacer.Replace(context.DownstreamReRoute.ServiceName, context.TemplatePlaceholderNameAndValues);
             var pathTemplate = $"/{serviceName.Data.Value}{dsPath.Data.Value}";
             return (pathTemplate, query);

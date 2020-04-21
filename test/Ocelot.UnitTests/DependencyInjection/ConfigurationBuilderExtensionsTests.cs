@@ -1,16 +1,16 @@
 ﻿namespace Ocelot.UnitTests.DependencyInjection
 {
-    using System.Collections.Generic;
-    using System.IO;
+    using Microsoft.AspNetCore.Hosting;
+    using Microsoft.Extensions.Configuration;
+    using Moq;
     using Newtonsoft.Json;
     using Ocelot.Configuration.File;
-    using Microsoft.Extensions.Configuration;
     using Ocelot.DependencyInjection;
     using Shouldly;
+    using System.Collections.Generic;
+    using System.IO;
     using TestStack.BDDfy;
     using Xunit;
-    using Moq;
-    using Microsoft.AspNetCore.Hosting;
 
     public class ConfigurationBuilderExtensionsTests
     {
@@ -22,16 +22,15 @@
         private FileConfiguration _reRouteB;
         private FileConfiguration _aggregate;
         private FileConfiguration _envSpecific;
-        private Mock<IHostingEnvironment> _hostingEnvironment;
-
+        private Mock<IWebHostEnvironment> _hostingEnvironment;
 
         public ConfigurationBuilderExtensionsTests()
         {
-            _hostingEnvironment = new Mock<IHostingEnvironment>();
+            _hostingEnvironment = new Mock<IWebHostEnvironment>();
             // Clean up config files before each test
             var subConfigFiles = new DirectoryInfo(".").GetFiles("ocelot.*.json");
 
-            foreach(var config in subConfigFiles)
+            foreach (var config in subConfigFiles)
             {
                 config.Delete();
             }
@@ -99,6 +98,7 @@
                     },
                     ServiceDiscoveryProvider = new FileServiceDiscoveryProvider
                     {
+                        Scheme = "https",
                         Host = "Host",
                         Port = 80,
                         Type = "Type"
@@ -278,6 +278,7 @@
             fc.GlobalConfiguration.RateLimitOptions.QuotaExceededMessage.ShouldBe(_globalConfig.GlobalConfiguration.RateLimitOptions.QuotaExceededMessage);
             fc.GlobalConfiguration.RateLimitOptions.RateLimitCounterPrefix.ShouldBe(_globalConfig.GlobalConfiguration.RateLimitOptions.RateLimitCounterPrefix);
             fc.GlobalConfiguration.RequestIdKey.ShouldBe(_globalConfig.GlobalConfiguration.RequestIdKey);
+            fc.GlobalConfiguration.ServiceDiscoveryProvider.Scheme.ShouldBe(_globalConfig.GlobalConfiguration.ServiceDiscoveryProvider.Scheme);
             fc.GlobalConfiguration.ServiceDiscoveryProvider.Host.ShouldBe(_globalConfig.GlobalConfiguration.ServiceDiscoveryProvider.Host);
             fc.GlobalConfiguration.ServiceDiscoveryProvider.Port.ShouldBe(_globalConfig.GlobalConfiguration.ServiceDiscoveryProvider.Port);
             fc.GlobalConfiguration.ServiceDiscoveryProvider.Type.ShouldBe(_globalConfig.GlobalConfiguration.ServiceDiscoveryProvider.Type);
@@ -313,16 +314,16 @@
 
         private void GivenTheBaseUrl(string baseUrl)
         {
-            #pragma warning disable CS0618
+#pragma warning disable CS0618
             var builder = new ConfigurationBuilder()
                 .AddOcelotBaseUrl(baseUrl);
-            #pragma warning restore CS0618
+#pragma warning restore CS0618
             _configuration = builder.Build();
         }
 
         private void WhenIGet(string key)
         {
-            _result = _configuration.GetValue("BaseUrl", "");
+            _result = _configuration.GetValue(key, "");
         }
 
         private void ThenTheResultIs(string expected)
